@@ -1,6 +1,6 @@
-# MJJ提醒系统 (MyMsgPush)
+# 懒人备忘提醒推送系统 (MyMsgPush)
 
-> 🔔 一个轻量级的提醒推送系统，支持多种通知渠道，内置管理后台。
+> 🔔 一个轻量级的备忘提醒推送系统，支持多种通知渠道，内置管理后台。
 
 基于 [deadline](https://github.com/1143520/deadline) 项目重构，从 Cloudflare Pages 架构迁移至 **Node.js + Express + SQLite** 纯本地化方案，开箱即用。
 
@@ -14,12 +14,6 @@
 - 🛡️ **管理后台** — 暗色主题后台，统计 / 渠道配置 / 通知日志 / 测试发送
 - 💾 **SQLite 持久化** — 使用 `sql.js`，无需编译，跨平台运行
 
-## 📸 截图预览
-
-| 前台（密码保护） | 管理后台 | 通知渠道配置 |
-|:---:|:---:|:---:|
-| 🔒 密码遮罩 | 📊 卡片式提醒 | 📡 6种渠道 |
-
 ## 🚀 快速部署
 
 ### 环境要求
@@ -30,8 +24,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/logdns/mymsgoush.git
-cd mymsgoush
+git clone https://github.com/logdns/mymsgpush.git
+cd mymsgpush
 ```
 
 ### 2. 安装依赖
@@ -79,8 +73,8 @@ pm2 startup
 ### PM2 常用命令
 
 ```bash
-pm2 status          # 查看状态
-pm2 logs mymsgpush  # 查看日志
+pm2 status             # 查看状态
+pm2 logs mymsgpush     # 查看日志
 pm2 restart mymsgpush  # 重启
 pm2 stop mymsgpush     # 停止
 ```
@@ -95,10 +89,9 @@ pm2 stop mymsgpush     # 停止
 
 2. **上传项目**
    ```bash
-   # SSH 连接服务器
    cd /www/wwwroot
-   git clone https://github.com/logdns/mymsgoush.git
-   cd mymsgoush
+   git clone https://github.com/logdns/mymsgpush.git
+   cd mymsgpush
    npm install
    ```
 
@@ -125,15 +118,14 @@ pm2 stop mymsgpush     # 停止
 
 1. **安装 Node.js 和 PM2**
    ```bash
-   # 通过宝塔安装 Node.js 后
    npm install -g pm2
    ```
 
 2. **部署项目**
    ```bash
    cd /www/wwwroot
-   git clone https://github.com/logdns/mymsgoush.git
-   cd mymsgoush
+   git clone https://github.com/logdns/mymsgpush.git
+   cd mymsgpush
    npm install
    pm2 start server.js --name mymsgpush
    pm2 save
@@ -143,8 +135,7 @@ pm2 stop mymsgpush     # 停止
 3. **宝塔放行端口**
    - 宝塔面板 → 安全 → 系统防火墙 → 放行端口 `3009`
 
-4. **配置反向代理**
-   - 同方法一步骤4
+4. **配置反向代理**（同方法一步骤4）
 
 ### 宝塔 Nginx 反向代理配置参考
 

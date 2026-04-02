@@ -32,7 +32,7 @@ async function startServer() {
     });
 
     app.listen(PORT, () => {
-        console.log(`\n🚀 MJJ提醒系统已启动`);
+        console.log(`\n🚀 懒人备忘提醒推送系统已启动`);
         console.log(`📍 前台: http://localhost:${PORT}`);
         console.log(`📍 后台: http://localhost:${PORT}/admin.html\n`);
         scheduler.start();

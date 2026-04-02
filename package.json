@@ -1,14 +1,14 @@
 {
   "name": "mymsgpush",
   "version": "1.0.0",
-  "description": "MJJ提醒推送系统 - 支持多渠道通知的提醒管理工具",
+  "description": "懒人备忘提醒推送系统 - 支持多渠道通知的提醒管理工具",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/logdns/mymsgoush.git"
+    "url": "https://github.com/logdns/mymsgpush.git"
   },
   "keywords": ["reminder", "notification", "telegram", "bark", "webhook"],
   "license": "MIT",
