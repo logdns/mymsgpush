@@ -10,13 +10,19 @@
     "type": "git",
     "url": "https://github.com/logdns/mymsgpush.git"
   },
-  "keywords": ["reminder", "notification", "telegram", "bark", "webhook"],
+  "keywords": [
+    "reminder",
+    "notification",
+    "telegram",
+    "bark",
+    "webhook"
+  ],
   "license": "MIT",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "node-cron": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
-    "sql.js": "^1.12.0"
+    "sql.js": "^1.14.1"
   }
 }

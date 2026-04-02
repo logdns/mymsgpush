@@ -35,7 +35,6 @@ async function initDB() {
             cycle_type TEXT NOT NULL DEFAULT 'once',
             status INTEGER DEFAULT 0,
             link TEXT,
-            cron_job_id INTEGER,
             created_at TEXT DEFAULT (datetime('now'))
         )
     `);
