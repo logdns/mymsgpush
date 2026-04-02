@@ -30,8 +30,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/logdns/mymsgpush.git
-cd mymsgpush
+git clone https://github.com/logdns/mymsgoush.git
+cd mymsgoush
 ```
 
 ### 2. 安装依赖
@@ -97,8 +97,8 @@ pm2 stop mymsgpush     # 停止
    ```bash
    # SSH 连接服务器
    cd /www/wwwroot
-   git clone https://github.com/logdns/mymsgpush.git
-   cd mymsgpush
+   git clone https://github.com/logdns/mymsgoush.git
+   cd mymsgoush
    npm install
    ```
 
@@ -132,8 +132,8 @@ pm2 stop mymsgpush     # 停止
 2. **部署项目**
    ```bash
    cd /www/wwwroot
-   git clone https://github.com/logdns/mymsgpush.git
-   cd mymsgpush
+   git clone https://github.com/logdns/mymsgoush.git
+   cd mymsgoush
    npm install
    pm2 start server.js --name mymsgpush
    pm2 save
