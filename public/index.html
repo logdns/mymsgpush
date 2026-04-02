@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MJJ提醒😋</title>
+    <meta name="description" content="MJJ提醒系统 - 支持多种提醒方式和循环类型的在线提醒工具">
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="shortcut icon" href="logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- 密码验证层 -->
+    <div id="password-overlay" class="password-overlay">
+        <div class="password-container">
+            <input type="password" id="password-input" placeholder="请输入密码">
+            <button onclick="verifyPassword()">确认</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="header">
+            <div class="title-wrapper">
+                <a href="https://xinai.de/" class="logo-link" target="_blank" rel="noopener noreferrer">
+                    <img src="logo.png" alt="网站Logo" class="logo">
+                </a>
+                <h1>MJJ提醒😋</h1>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <a href="/admin.html" class="add-button" style="text-decoration:none;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);">⚙️系统后台</a>
+                <button id="openAddForm" class="add-button">📑添加新提醒</button>
+            </div>
+        </div>
+
+        <!-- 弹出式添加提醒表单 -->
+        <div id="addFormModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>➕添加新提醒</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <form id="reminderForm">
+                    <div class="form-group">
+                        <label for="title">🪪项目名称:</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="link">📌链接地址:</label>
+                        <input type="url" id="link" placeholder="可选，例如: https://example.com">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="content">🔖项目内容:</label>
+                        <textarea id="content" required></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="remindTime">⏰提醒时间:</label>
+                        <div class="time-shortcuts">
+                            <button type="button" class="time-shortcut-btn" onclick="setQuickTime(3)">3分钟后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setQuickTime(15)">15分钟后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setQuickTime(30)">30分钟后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setQuickTime(60)">1小时后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setQuickTime(120)">2小时后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setTomorrowMorning()">明天9点</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setTomorrowNoon()">明天中午12点</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setDaysLater(6)">6天后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setDaysLater(29)">29天后</button>
+                            <button type="button" class="time-shortcut-btn" onclick="setDaysLater(364)">364天后</button>
+                        </div>
+                        <input type="datetime-local" id="remindTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cycleType">🔁循环类型:</label>
+                        <select id="cycleType" required>
+                            <option value="once">单次提醒</option>
+                            <option value="weekly">每周循环</option>
+                            <option value="monthly">每月循环</option>
+                            <option value="yearly">每年循环</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn">添加提醒</button>
+                        <button type="button" class="cancel-btn" onclick="closeModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 提醒列表 -->
+        <div class="reminders-grid" id="remindersList"></div>
+    </div>
+
+    <!-- 自定义确认窗口 -->
+    <div id="confirmModal" class="modal confirm-modal">
+        <div class="modal-content confirm-content">
+            <div class="modal-header">
+                <h2>确认操作</h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" onclick="closeConfirmModal(false)">取消</button>
+                <button class="confirm-btn" onclick="closeConfirmModal(true)">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示条 -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <svg class="toast-icon success" viewBox="0 0 1024 1024" width="16" height="16">
+                <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm193.5 301.7l-210.6 292a31.8 31.8 0 0 1-51.7 0L318.5 484.9c-3.8-5.3 0-12.7 6.5-12.7h46.9c10.2 0 19.9 4.9 25.9 13.3l71.2 98.8 157.2-218c6-8.3 15.6-13.3 25.9-13.3H699c6.5 0 10.3 7.4 6.5 12.7z" />
+            </svg>
+            <span id="toastMessage"></span>
+        </div>
+    </div>
+
+    <script>
+        // 快速时间设置函数
+        function setQuickTime(minutes) {
+            const now = new Date();
+            const futureTime = new Date(now.getTime() + minutes * 60000);
+            document.getElementById('remindTime').value = formatDateTimeForInput(futureTime);
+        }
+
+        function setTomorrowMorning() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(9, 0, 0, 0);
+            document.getElementById('remindTime').value = formatDateTimeForInput(tomorrow);
+        }
+
+        function setTomorrowNoon() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(12, 0, 0, 0);
+            document.getElementById('remindTime').value = formatDateTimeForInput(tomorrow);
+        }
+
+        function setDaysLater(days) {
+            const now = new Date();
+            const futureTime = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+            futureTime.setHours(now.getHours());
+            futureTime.setMinutes(now.getMinutes());
+            document.getElementById('remindTime').value = formatDateTimeForInput(futureTime);
+        }
+
+        function formatDateTimeForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        const API_BASE = '/api/reminders';
+
+        // 格式化时间（Node.js版本不需要减8小时，直接使用本地时间）
+        function formatDateTime(date) {
+            const d = new Date(date);
+            return d.toLocaleString('zh-CN');
+        }
+
+        // 自定义确认窗口
+        let confirmResolve = null;
+
+        function showConfirm(message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                const messageEl = document.getElementById('confirmMessage');
+                messageEl.textContent = message;
+                modal.style.display = 'block';
+                confirmResolve = resolve;
+            });
+        }
+
+        function closeConfirmModal(result) {
+            const modal = document.getElementById('confirmModal');
+            modal.style.display = 'none';
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+
+        // 显示提示条
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const icon = toast.querySelector('.toast-icon');
+            toastMessage.textContent = message;
+            toast.className = `toast show ${type}`;
+            icon.className = `toast-icon ${type}`;
+            setTimeout(() => { toast.className = 'toast'; }, 3000);
+        }
+
+        // 删除提醒
+        async function deleteReminder(id) {
+            const confirmed = await showConfirm('确定要删除这个提醒吗？');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showToast('提醒删除成功！');
+                    loadReminders();
+                } else {
+                    const error = await response.text();
+                    throw new Error(error || '删除失败');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('删除提醒失败：' + error.message, 'error');
+            }
+        }
+
+        // 添加提醒
+        async function addReminder(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const remindTime = document.getElementById('remindTime').value;
+            const cycleType = document.getElementById('cycleType').value;
+            const link = document.getElementById('link').value;
+
+            const reminder = {
+                id: Date.now().toString(),
+                title,
+                content,
+                remind_time: new Date(remindTime).toISOString(),
+                cycle_type: cycleType,
+                status: 0,
+                link: link || 'https://xinai.de'
+            };
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reminder)
+                });
+                const responseText = await response.text();
+                if (response.ok) {
+                    showToast('提醒添加成功！');
+                    closeModal();
+                    loadReminders();
+                } else {
+                    throw new Error(responseText || '添加失败');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('添加提醒失败：' + error.message, 'error');
+            }
+        }
+
+        // 加载提醒列表
+        async function loadReminders() {
+            try {
+                const response = await fetch(API_BASE);
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || '加载失败');
+                }
+                const reminders = await response.json();
+
+                const listElement = document.getElementById('remindersList');
+                listElement.innerHTML = '';
+
+                reminders.sort((a, b) => new Date(a.remind_time) - new Date(b.remind_time));
+
+                reminders.forEach(reminder => {
+                    const cycleText = {
+                        'once': '单次提醒',
+                        'weekly': '每周循环',
+                        'monthly': '每月循环',
+                        'yearly': '每年循环'
+                    }[reminder.cycle_type] || '单次提醒';
+
+                    let nextRemindTime = null;
+                    if (reminder.cycle_type !== 'once') {
+                        nextRemindTime = new Date(reminder.remind_time);
+                    }
+
+                    const reminderElement = document.createElement('div');
+                    reminderElement.className = `card-container theme-${reminder.cycle_type}`;
+                    reminderElement.innerHTML = `
+                        <div class="dashed-border"></div>
+                        <div class="reminder-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <div class="type-icon ${reminder.cycle_type}">
+                                        ${reminder.cycle_type === 'once' ? `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"/>
+                                                <path d="M686.7 638.6L544.1 535.5V288c0-4.4-3.6-8-8-8H488c-4.4 0-8 3.6-8 8v275.4c0 2.6 1.2 5 3.3 6.5l165.4 120.6c3.6 2.6 8.6 1.8 11.2-1.7l28.6-39c2.6-3.7 1.8-8.7-1.8-11.2z"/>
+                                            </svg>
+                                        ` : reminder.cycle_type === 'weekly' ? `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M112 880c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V460H112v420zm768-696H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v176h800V216c0-17.7-14.3-32-32-32z"/>
+                                            </svg>
+                                        ` : reminder.cycle_type === 'monthly' ? `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M512 832c-176.448 0-320-143.552-320-320S335.552 192 512 192c23.232 0 45.888 2.56 67.84 7.232a2.4832 2.4832 0 0 1 1.984 2.816 3.3792 3.3792 0 0 1-.512 1.408C560.512 242.688 548.288 287.744 548.288 336c0 189.632 153.088 343.36 341.952 345.088 1.088.064 2.048.768 2.56 1.792s.448 2.24-.256 3.136C815.36 772.672 670.784 832 512 832z"/>
+                                            </svg>
+                                        ` : `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32z"/>
+                                            </svg>
+                                        `}
+                                    </div>
+                                    <h3>${reminder.title}</h3>
+                                </div>
+                                <span class="status ${reminder.status === 0 ? 'pending' : 'completed'}">
+                                    ${reminder.status === 0 ? '待提醒' : '已提醒'}
+                                </span>
+                            </div>
+                            <div class="card-content">
+                                <p class="content-text">${reminder.content}</p>
+                                <p class="time-text">
+                                    <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                                        <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"/>
+                                        <path d="M686.7 638.6L544.1 535.5V288c0-4.4-3.6-8-8-8H488c-4.4 0-8 3.6-8 8v275.4c0 2.6 1.2 5 3.3 6.5l165.4 120.6c3.6 2.6 8.6 1.8 11.2-1.7l28.6-39c2.6-3.7 1.8-8.7-1.8-11.2z"/>
+                                    </svg>
+                                    ${formatDateTime(reminder.remind_time)}
+                                </p>
+                                ${nextRemindTime ? `
+                                <p class="time-text next-remind">
+                                    <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                                        <path d="M908.1 353.1l-253.9-36.9L540.7 86.1c-3.1-6.3-8.2-11.4-14.5-14.5-15.8-7.8-35-1.3-42.9 14.5L369.8 316.2l-253.9 36.9c-7 1-13.4 4.3-18.3 9.3a32.05 32.05 0 0 0 .6 45.3l183.7 179.1-43.4 252.9a31.95 31.95 0 0 0 46.4 33.7L512 754l227.1 119.4c6.2 3.3 13.4 4.4 20.3 3.2 17.4-3 29.1-19.5 26.1-36.9l-43.4-252.9 183.7-179.1c5-4.9 8.3-11.3 9.3-18.3 2.7-17.5-9.5-33.7-27-36.3z"/>
+                                    </svg>
+                                    下次提醒: ${formatDateTime(nextRemindTime)}
+                                </p>
+                                ` : reminder.cycle_type === 'once' ? `
+                                <p class="time-text next-remind disabled">单次提醒无下次提醒</p>
+                                ` : `
+                                <p class="time-text next-remind waiting">等待第一次提醒后显示下次时间</p>
+                                `}
+                                <p class="cycle-text">
+                                    <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                                        <path d="M909.1 209.3l-56.4 44.1C775.8 155.1 656.2 92 521.9 92 290 92 102.3 279.5 102 511.5 101.7 743.7 289.8 932 521.9 932c181.3 0 335.8-115 394.6-276.1 1.5-4.2-.7-8.9-4.9-10.3l-56.7-19.5c-4.1-1.4-8.6.7-10.1 4.8-1.8 5-3.8 10-5.9 14.9-17.3 41-42.1 77.8-73.7 109.4-31.6 31.6-68.4 56.4-109.3 73.8-42.3 17.9-87.4 27-133.8 27-46.5 0-91.5-9.1-133.8-27-40.9-17.3-77.7-42.1-109.3-73.8-31.6-31.6-56.4-68.4-73.7-109.4-17.9-42.4-27-87.4-27-133.9s9.1-91.5 27-133.9c17.3-41 42.1-77.8 73.7-109.4 31.6-31.6 68.4-56.4 109.3-73.8 42.3-17.9 87.4-27 133.8-27 46.5 0 91.5 9.1 133.8 27 40.9 17.3 77.7 42.1 109.3 73.8 9.9 9.9 19.2 20.4 27.8 31.4l-60.2 47c-5.3 4.1-3.5 12.5 3 14.1l175.6 43c5 1.2 9.9-2.6 9.9-7.7l.8-180.9c-.1-6.6-7.8-10.3-13-6.2z"/>
+                                    </svg>
+                                    ${cycleText}
+                                </p>
+                            </div>
+                            <div class="card-actions">
+                                <a href="${reminder.link}" class="link-btn" target="_blank" rel="noopener noreferrer">
+                                    <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                                        <path d="M853.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667v256a42.666667 42.666667 0 0 1-42.666667 42.666667H256a42.666667 42.666667 0 0 1-42.666667-42.666667V256a42.666667 42.666667 0 0 1 42.666667-42.666667h256a42.666667 42.666667 0 0 0 0-85.333333H256a128 128 0 0 0-128 128v512a128 128 0 0 0 128 128h512a128 128 0 0 0 128-128v-256a42.666667 42.666667 0 0 0-42.666667-42.666667z"/>
+                                        <path d="M682.666667 213.333333h67.413333l-268.373333 267.946667a42.666667 42.666667 0 0 0 0 60.586667 42.666667 42.666667 0 0 0 60.586666 0L810.666667 273.92V341.333333a42.666667 42.666667 0 0 0 85.333333 0V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667h-170.666666a42.666667 42.666667 0 0 0 0 85.333333z"/>
+                                    </svg>
+                                    直达链接
+                                </a>
+                                <button class="delete-btn" onclick="deleteReminder('${reminder.id}')">
+                                    <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                                        <path d="M360 184h-8c4.4 0 8-3.6 8-8v8h304v-8c0 4.4 3.6 8 8 8h-8v72h72v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80h72v-72z"/>
+                                        <path d="M864 256H160c-17.7 0-32 14.3-32 32v32c0 4.4 3.6 8 8 8h60.4l24.7 523c1.6 34.1 29.8 61 63.9 61h454c34.2 0 62.3-26.8 63.9-61l24.7-523H888c4.4 0 8-3.6 8-8v-32c0-17.7-14.3-32-32-32zM731.3 840H292.7l-24.2-512h487l-24.2 512z"/>
+                                    </svg>
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listElement.appendChild(reminderElement);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('加载提醒列表失败：' + error.message, 'error');
+            }
+        }
+
+        // 模态窗口
+        const modal = document.getElementById('addFormModal');
+        const openBtn = document.getElementById('openAddForm');
+        const closeBtn = document.getElementsByClassName('close')[0];
+
+        openBtn.onclick = function () { modal.style.display = "block"; }
+        closeBtn.onclick = function () { closeModal(); }
+
+        function closeModal() {
+            modal.style.display = "none";
+            document.getElementById('reminderForm').reset();
+        }
+
+        window.onclick = function (event) {
+            if (event.target == modal) closeModal();
+        }
+
+        document.getElementById('reminderForm').addEventListener('submit', addReminder);
+        loadReminders();
+
+        // 设置最小时间
+        const remindTimeInput = document.getElementById('remindTime');
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        remindTimeInput.min = now.toISOString().slice(0, 16);
+
+        // 密码验证
+        async function verifyPassword() {
+            const password = document.getElementById('password-input').value;
+            try {
+                const response = await fetch('/api/verify-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                if (response.ok) {
+                    document.getElementById('password-overlay').style.display = 'none';
+                    document.body.classList.remove('locked');
+                    // 存密码hash到cookie用于后续校验
+                    const expiryDate = new Date();
+                    expiryDate.setDate(expiryDate.getDate() + 30);
+                    document.cookie = `auth_pwd=${btoa(password)}; expires=${expiryDate.toUTCString()}; path=/`;
+                } else {
+                    alert('密码错误');
+                }
+            } catch (error) {
+                alert('验证失败，请重试');
+            }
+        }
+
+        // 回车提交密码
+        document.getElementById('password-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') verifyPassword();
+        });
+
+        // 页面加载时检查密码
+        window.onload = async function () {
+            // 先检测是否需要密码
+            try {
+                // 尝试用空密码，看是否无需密码
+                const checkRes = await fetch('/api/verify-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: '' })
+                });
+                const checkData = await checkRes.json();
+                if (checkData.success) {
+                    // 无需密码
+                    document.getElementById('password-overlay').style.display = 'none';
+                    document.body.classList.remove('locked');
+                    return;
+                }
+            } catch (e) {}
+
+            // 需要密码，检查cookie中存的密码是否还有效
+            const cookies = document.cookie.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_pwd='));
+            if (authCookie) {
+                const savedPwd = atob(authCookie.split('=')[1]);
+                try {
+                    const res = await fetch('/api/verify-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: savedPwd })
+                    });
+                    if (res.ok) {
+                        document.getElementById('password-overlay').style.display = 'none';
+                        document.body.classList.remove('locked');
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            // 清除旧cookie，显示密码输入
+            document.cookie = 'auth=true; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.cookie = 'auth_pwd=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.getElementById('password-overlay').style.display = 'flex';
+            document.body.classList.add('locked');
+        }
+    </script>
+</body>
+
+</html>
