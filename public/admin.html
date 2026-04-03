@@ -84,6 +84,8 @@
         .r-card-meta span{display:flex;align-items:center;gap:4px;}
         .r-card-actions{display:flex;gap:6px;border-top:1px solid var(--border);padding-top:12px;}
         .r-card-actions button{flex:1;padding:6px 0;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;}
+        .r-card-actions .btn-edit{background:rgba(255,209,102,0.1);color:var(--warning);}
+        .r-card-actions .btn-edit:hover{background:rgba(255,209,102,0.2);}
         .r-card-actions .btn-link{background:rgba(67,97,238,0.1);color:var(--accent);}
         .r-card-actions .btn-link:hover{background:rgba(67,97,238,0.2);}
         .r-card-actions .btn-test{background:rgba(6,214,160,0.1);color:var(--success);}
@@ -262,11 +264,12 @@
     </div>
 </div>
 
-<!-- Add Reminder Modal -->
+<!-- Add/Edit Reminder Modal -->
 <div class="modal-overlay" id="addModal">
     <div class="modal-box">
-        <div class="modal-box-header"><h3>➕ 添加新提醒</h3><button class="modal-close" onclick="closeAddModal()">&times;</button></div>
+        <div class="modal-box-header"><h3 id="modalTitle">➕ 添加新提醒</h3><button class="modal-close" onclick="closeAddModal()">&times;</button></div>
         <div class="modal-box-body">
+            <input type="hidden" id="editId">
             <div class="form-row">
                 <div class="form-group"><label>🪪 项目名称</label><input type="text" id="addTitle" placeholder="提醒标题"></div>
                 <div class="form-group"><label>🔁 循环类型</label><select id="addCycleType"><option value="once">单次提醒</option><option value="weekly">每周循环</option><option value="monthly">每月循环</option><option value="yearly">每年循环</option></select></div>
@@ -283,7 +286,8 @@
                 </div>
                 <input type="datetime-local" id="addRemindTime">
             </div></div>
-            <div class="form-actions"><button class="form-btn secondary" onclick="closeAddModal()">取消</button><button class="form-btn primary" onclick="submitReminder()">添加提醒</button></div>
+            <div class="form-row full" id="editStatusRow" style="display:none;"><div class="form-group"><label>📊 状态</label><select id="editStatus"><option value="0">待提醒</option><option value="1">已完成</option></select></div></div>
+            <div class="form-actions"><button class="form-btn secondary" onclick="closeAddModal()">取消</button><button class="form-btn primary" id="modalSubmitBtn" onclick="submitReminder()">添加提醒</button></div>
         </div>
     </div>
 </div>
@@ -355,6 +359,7 @@ async function loadReminders(page=1){
                     <span>🔁 ${CYCLE_TEXT[r.cycle_type]||r.cycle_type}</span>
                 </div>
                 <div class="r-card-actions">
+                    <button class="btn-edit" onclick='showEditModal(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️ 编辑</button>
                     ${r.link?`<button class="btn-link" onclick="window.open('${r.link}','_blank')">🔗 链接</button>`:''}
                     <button class="btn-test" onclick="testNotify('${r.id}')">📤 测试推送</button>
                     <button class="btn-del" onclick="delReminder('${r.id}')">🗑 删除</button>
@@ -368,9 +373,33 @@ async function loadReminders(page=1){
 async function delReminder(id){if(!confirm('确定删除？'))return;await fetch(`/admin/reminders/${id}`,{method:'DELETE',headers:H()});toast('已删除');loadReminders();loadStats();}
 async function testNotify(id){const r=await(await fetch(`/admin/reminders/${id}/test-notify`,{method:'POST',headers:H()})).json();toast(r.success?'测试通知已发送！':'发送失败: '+(r.error||'无启用渠道'),r.success?'success':'error');}
 
-// Add Modal
-function showAddModal(){document.getElementById('addModal').classList.add('show');document.getElementById('addTitle').focus();}
-function closeAddModal(){document.getElementById('addModal').classList.remove('show');['addTitle','addContent','addLink','addRemindTime'].forEach(id=>document.getElementById(id).value='');document.getElementById('addCycleType').value='once';}
+// Add / Edit Modal
+let editMode=false;
+function showAddModal(){
+    editMode=false;
+    document.getElementById('editId').value='';
+    document.getElementById('modalTitle').textContent='➕ 添加新提醒';
+    document.getElementById('modalSubmitBtn').textContent='添加提醒';
+    document.getElementById('editStatusRow').style.display='none';
+    document.getElementById('addModal').classList.add('show');
+    document.getElementById('addTitle').focus();
+}
+function showEditModal(r){
+    editMode=true;
+    document.getElementById('editId').value=r.id;
+    document.getElementById('modalTitle').textContent='✏️ 编辑提醒';
+    document.getElementById('modalSubmitBtn').textContent='保存修改';
+    document.getElementById('addTitle').value=r.title||'';
+    document.getElementById('addContent').value=r.content||'';
+    document.getElementById('addCycleType').value=r.cycle_type||'once';
+    document.getElementById('addLink').value=r.link||'';
+    document.getElementById('addRemindTime').value=fmtDT(new Date(r.remind_time));
+    document.getElementById('editStatus').value=String(r.status||0);
+    document.getElementById('editStatusRow').style.display='';
+    document.getElementById('addModal').classList.add('show');
+    document.getElementById('addTitle').focus();
+}
+function closeAddModal(){document.getElementById('addModal').classList.remove('show');['addTitle','addContent','addLink','addRemindTime','editId'].forEach(id=>document.getElementById(id).value='');document.getElementById('addCycleType').value='once';document.getElementById('editStatusRow').style.display='none';editMode=false;}
 function fmtDT(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 function setQT(m){document.getElementById('addRemindTime').value=fmtDT(new Date(Date.now()+m*60000));}
 function setTomorrow(h){const d=new Date();d.setDate(d.getDate()+1);d.setHours(h,0,0,0);document.getElementById('addRemindTime').value=fmtDT(d);}
@@ -378,8 +407,17 @@ function setDaysLater(n){document.getElementById('addRemindTime').value=fmtDT(ne
 async function submitReminder(){
     const title=document.getElementById('addTitle').value.trim(),content=document.getElementById('addContent').value.trim(),rt=document.getElementById('addRemindTime').value,ct=document.getElementById('addCycleType').value,link=document.getElementById('addLink').value.trim();
     if(!title){toast('请输入标题','error');return;}if(!content){toast('请输入内容','error');return;}if(!rt){toast('请选择时间','error');return;}
-    try{const r=await fetch('/api/reminders',{method:'POST',headers:H(),body:JSON.stringify({id:Date.now().toString(),title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link})});
-    if(r.ok){toast('✅ 提醒添加成功！');closeAddModal();loadReminders();loadStats();}else toast('添加失败','error');}catch(e){toast('添加失败','error');}
+    try{
+        if(editMode){
+            const id=document.getElementById('editId').value;
+            const status=Number(document.getElementById('editStatus').value);
+            const r=await fetch(`/admin/reminders/${id}`,{method:'PUT',headers:H(),body:JSON.stringify({title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link,status})});
+            if(r.ok){toast('✅ 提醒修改成功！');closeAddModal();loadReminders();loadStats();}else toast('修改失败','error');
+        }else{
+            const r=await fetch('/api/reminders',{method:'POST',headers:H(),body:JSON.stringify({id:Date.now().toString(),title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link})});
+            if(r.ok){toast('✅ 提醒添加成功！');closeAddModal();loadReminders();loadStats();}else toast('添加失败','error');
+        }
+    }catch(e){toast(editMode?'修改失败':'添加失败','error');}
 }
 document.getElementById('addModal').addEventListener('click',function(e){if(e.target===this)closeAddModal();});
 

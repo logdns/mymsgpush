@@ -6,7 +6,7 @@
 
 ## ✨ 功能特性
 
-- 📋 **提醒管理** — 卡片式前台 + 管理后台，支持增删查
+- 📋 **提醒管理** — 卡片式前台 + 管理后台，支持增删改查
 - 🔁 **循环提醒** — 单次 / 每周 / 每月 / 每年
 - ⏱️ **自动推送** — 内置 `node-cron` 每分钟检查，到期自动推送
 - 📡 **6种通知渠道** — Telegram / 企业微信 / Bark / 飞书 / 钉钉 / 自定义Webhook
@@ -196,6 +196,7 @@ mymsgpush/
 |------|------|------|
 | GET | `/api/reminders` | 获取提醒列表 |
 | POST | `/api/reminders` | 添加提醒 |
+| PUT | `/api/reminders/:id` | 编辑提醒 |
 | DELETE | `/api/reminders/:id` | 删除提醒 |
 | POST | `/api/verify-password` | 验证前台密码 |
 | POST | `/api/notify/trigger` | 手动触发通知检查 |
