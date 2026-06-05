@@ -696,14 +696,29 @@ function getWebdavForm(){
 }
 
 async function saveWebdavConfig(){
-    const r=await fetch('/admin/webdav',{method:'PUT',headers:H(),body:JSON.stringify(getWebdavForm())});
-    const d=await r.json().catch(()=>({}));
-    if(r.ok){toast('WebDAV 设置已保存');document.getElementById('webdavPassword').value=d.config&&d.config.password?d.config.password:'';document.getElementById('webdavStatus').textContent='WebDAV 设置已保存。';}
-    else toast(d.error||'保存失败','error');
+    try{
+        const r=await fetch('/admin/webdav',{method:'PUT',headers:H(),body:JSON.stringify(getWebdavForm())});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok){
+            toast('WebDAV 设置已保存');
+            document.getElementById('webdavPassword').value=d.config&&d.config.password?d.config.password:'';
+            document.getElementById('webdavStatus').textContent='WebDAV 设置已保存。';
+            return true;
+        }
+        const message=r.status===404?'WebDAV 后端接口不可用，请重启 Node/PM2 进程后再试。':(d.error||'保存失败');
+        toast(message,'error');
+        document.getElementById('webdavStatus').textContent=message;
+        return false;
+    }catch(e){
+        const message='WebDAV 设置保存失败，请确认后端服务已重启。';
+        toast(message,'error');
+        document.getElementById('webdavStatus').textContent=message;
+        return false;
+    }
 }
 
 async function testWebdav(){
-    await saveWebdavConfig();
+    if(!(await saveWebdavConfig()))return;
     const r=await fetch('/admin/webdav/test',{method:'POST',headers:H()});
     const d=await r.json().catch(()=>({}));
     if(r.ok){toast('WebDAV 连接正常');document.getElementById('webdavStatus').textContent=d.message||'WebDAV 连接正常。';}
@@ -711,7 +726,7 @@ async function testWebdav(){
 }
 
 async function backupToWebdav(){
-    await saveWebdavConfig();
+    if(!(await saveWebdavConfig()))return;
     const r=await fetch('/admin/webdav/backup',{method:'POST',headers:H()});
     const d=await r.json().catch(()=>({}));
     if(r.ok){toast('已备份到 WebDAV');document.getElementById('webdavStatus').textContent=`备份完成：${d.remotePath}，${d.bytes||0} bytes。`;}
@@ -743,6 +758,10 @@ function renderUpdate(d){
     const box=document.getElementById('updateLog');
     box.scrollTop=box.scrollHeight;
 }
+function forceReloadAfterUpdate(){
+    const target=`${window.location.pathname}?updated=${Date.now()}${window.location.hash||''}`;
+    window.location.replace(target);
+}
 async function checkUpdate(){
     try{
         document.getElementById('updateState').textContent='检查中';
@@ -762,7 +781,7 @@ async function pollUpdate(){
             if(updateStartedFromUi&&!d.lastError){
                 updateStartedFromUi=false;
                 toast('更新完成，页面即将刷新');
-                setTimeout(()=>window.location.reload(),1200);
+                setTimeout(forceReloadAfterUpdate,1200);
             }else{
                 updateStartedFromUi=false;
             }
