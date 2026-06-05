@@ -189,6 +189,9 @@
         .mini-btn{padding:9px 12px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:var(--bg-hover);color:var(--text-secondary);}
         .mini-btn.primary{background:var(--accent);color:#fff;}
         .mini-btn.danger{background:rgba(243,18,96,.1);color:var(--danger);}
+        .admin-footer{padding:28px 0 8px;text-align:center;color:var(--text-muted);font-size:13px;}
+        .admin-footer a{color:var(--accent);font-weight:700;text-decoration:none;}
+        .admin-footer a:hover{text-decoration:underline;}
 
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
         @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
@@ -359,6 +362,10 @@
                 </div>
             </div>
         </div>
+        <footer class="admin-footer">
+            <span>© MyMsgPush</span>
+            <a href="https://github.com/logdns/mymsgpush" target="_blank" rel="noopener noreferrer">github.com/logdns/mymsgpush</a>
+        </footer>
     </div>
 </div>
 

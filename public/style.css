@@ -897,3 +897,21 @@ select:focus,
 .password-container::before {
     animation: none;
 }
+
+.app-footer {
+    margin: 28px 0 8px;
+    padding: 18px 0;
+    color: var(--hero-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.app-footer a {
+    color: var(--hero-primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.app-footer a:hover {
+    text-decoration: underline;
+}
