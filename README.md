@@ -13,6 +13,8 @@
 - 🔐 **安全设置** — 前台访问密码、管理员账户和管理员密码管理
 - 🛡️ **管理后台** — HeroUI 风格后台，统计 / 渠道配置 / 通知日志 / 测试发送
 - 📦 **数据迁移** — 后台 JSON 备份导出 / 合并导入 / 覆盖导入
+- ☁️ **WebDAV 备份** — 保存 WebDAV 设置后可一键远端备份和恢复
+- 🧾 **日志管理** — 通知日志支持关键词、平台、状态、时间筛选和删除
 - ♻️ **在线更新** — 后台检查 Git 远端版本、执行更新并查看进度日志
 - 💾 **SQLite 持久化** — 使用 `sql.js`，无需编译，跨平台运行
 
@@ -103,6 +105,18 @@ pm2 start server.js --name mymsgpush
 - 覆盖导入：只覆盖备份文件中包含的数据表；如果备份里没有管理员账户，会保留当前登录账户，避免锁死后台。
 
 建议以后每次升级前先在后台导出 JSON，再保留一份 `data/reminders.db` 文件级备份。
+
+### WebDAV 远端备份
+
+进入后台 `设置 -> WebDAV 备份与恢复`：
+
+1. 填写 WebDAV 地址、用户名、密码、远端目录和备份文件名。
+2. 点击「保存 WebDAV 设置」。
+3. 点击「测试连接」确认可访问。
+4. 点击「备份到 WebDAV」会上传当前 JSON 备份。
+5. 点击「合并恢复」或「覆盖恢复」可从 WebDAV 读取备份并导入。
+
+WebDAV 备份文件使用后台导出的同一 JSON 格式，包含提醒、通知渠道、通知日志、设置和管理员账户。
 
 ### 使用 PM2 守护进程
 
@@ -250,6 +264,14 @@ mymsgpush/
 | POST | `/api/notify/trigger` | 手动触发通知检查 |
 | GET | `/admin/data/export` | 后台导出数据备份 JSON |
 | POST | `/admin/data/import` | 后台导入数据备份 JSON |
+| GET | `/admin/webdav` | 获取 WebDAV 设置 |
+| PUT | `/admin/webdav` | 保存 WebDAV 设置 |
+| POST | `/admin/webdav/test` | 测试 WebDAV 连接 |
+| POST | `/admin/webdav/backup` | 备份数据到 WebDAV |
+| POST | `/admin/webdav/restore` | 从 WebDAV 恢复数据 |
+| GET | `/admin/logs` | 筛选通知日志 |
+| DELETE | `/admin/logs/:id` | 删除单条通知日志 |
+| POST | `/admin/logs/delete` | 删除选中、筛选或全部通知日志 |
 | GET | `/admin/update/check` | 后台检查远端更新 |
 | POST | `/admin/update/start` | 后台启动在线更新 |
 | GET | `/admin/update/status` | 读取更新进度日志 |

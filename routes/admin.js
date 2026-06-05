@@ -2,6 +2,7 @@ const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 const router = express.Router();
 const db = require('../db');
 const { sendNotifications } = require('../notifier');
@@ -29,6 +30,66 @@ const updateState = {
 };
 
 const repoRoot = path.join(__dirname, '..');
+
+function getSetting(key, defaultValue = '') {
+    const setting = db.get('SELECT value FROM settings WHERE key = ?', [key]);
+    return setting ? setting.value : defaultValue;
+}
+
+function setSetting(key, value) {
+    const existing = db.get('SELECT key FROM settings WHERE key = ?', [key]);
+    if (existing) db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key]);
+    else db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value]);
+}
+
+function createExportPayload() {
+    const payload = {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        app: 'mymsgpush',
+        tables: {}
+    };
+
+    for (const table of Object.keys(EXPORT_TABLES)) {
+        payload.tables[table] = db.all(`SELECT * FROM ${table}`);
+    }
+
+    return payload;
+}
+
+function importBackupPayload(data, mode = 'merge', fallbackUser = null) {
+    const tables = data && data.tables ? data.tables : data;
+    if (!tables || typeof tables !== 'object') {
+        const error = new Error('备份文件格式不正确');
+        error.status = 400;
+        throw error;
+    }
+    if (!['merge', 'replace'].includes(mode)) {
+        const error = new Error('导入模式不正确');
+        error.status = 400;
+        throw error;
+    }
+
+    if (mode === 'replace') {
+        const deleteOrder = ['notification_logs', 'reminders', 'notify_channels', 'settings', 'admin_users'];
+        for (const table of deleteOrder) {
+            if (Array.isArray(tables[table])) db.run(`DELETE FROM ${table}`);
+        }
+    }
+
+    const imported = {};
+    for (const table of Object.keys(EXPORT_TABLES)) {
+        imported[table] = insertRows(table, Array.isArray(tables[table]) ? tables[table] : []);
+    }
+
+    const adminCount = db.get('SELECT COUNT(*) as count FROM admin_users').count;
+    if (adminCount === 0 && fallbackUser) {
+        db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', [fallbackUser.username, hashPassword(fallbackUser.password)]);
+        imported.admin_users = 1;
+    }
+
+    return imported;
+}
 
 function pushUpdateLog(message) {
     const line = `[${new Date().toLocaleString('zh-CN')}] ${message}`;
@@ -63,6 +124,104 @@ function insertRows(table, rows) {
     }
 
     return count;
+}
+
+function buildLogFilters(source = {}) {
+    const filters = {
+        keyword: typeof source.keyword === 'string' ? source.keyword.trim() : '',
+        platform: typeof source.platform === 'string' ? source.platform.trim() : '',
+        success: source.success === undefined || source.success === null ? '' : String(source.success),
+        date_from: typeof source.date_from === 'string' ? source.date_from.trim() : '',
+        date_to: typeof source.date_to === 'string' ? source.date_to.trim() : ''
+    };
+    const where = [];
+    const params = [];
+
+    if (filters.keyword) {
+        where.push('(r.title LIKE ? OR nl.platform LIKE ? OR nl.message LIKE ?)');
+        params.push(`%${filters.keyword}%`, `%${filters.keyword}%`, `%${filters.keyword}%`);
+    }
+    if (filters.platform) {
+        where.push('nl.platform = ?');
+        params.push(filters.platform);
+    }
+    if (filters.success !== '') {
+        where.push('nl.success = ?');
+        params.push(Number(filters.success) ? 1 : 0);
+    }
+    if (filters.date_from) {
+        where.push('datetime(nl.created_at) >= datetime(?)');
+        params.push(filters.date_from);
+    }
+    if (filters.date_to) {
+        where.push('datetime(nl.created_at) <= datetime(?)');
+        params.push(filters.date_to);
+    }
+
+    return { filters, whereSql: where.length ? ` WHERE ${where.join(' AND ')}` : '', params };
+}
+
+function parseWebdavConfig(rawValue = null) {
+    try {
+        const parsed = JSON.parse(rawValue || getSetting('webdav_config', '{}') || '{}');
+        return {
+            enabled: Boolean(parsed.enabled),
+            url: parsed.url || '',
+            username: parsed.username || '',
+            password: parsed.password || '',
+            directory: parsed.directory || 'mymsgpush',
+            filename: parsed.filename || 'mymsgpush-backup.json'
+        };
+    } catch {
+        return { enabled: false, url: '', username: '', password: '', directory: 'mymsgpush', filename: 'mymsgpush-backup.json' };
+    }
+}
+
+function maskWebdavConfig(config) {
+    return { ...config, password: config.password ? '********' : '' };
+}
+
+function normalizeWebdavPath(...parts) {
+    return parts
+        .filter(Boolean)
+        .join('/')
+        .replace(/\\/g, '/')
+        .replace(/\/+/g, '/')
+        .replace(/^\/|\/$/g, '');
+}
+
+function buildWebdavUrl(config, relativePath = '') {
+    const base = String(config.url || '').replace(/\/+$/g, '');
+    const cleanedPath = normalizeWebdavPath(relativePath);
+    return cleanedPath ? `${base}/${cleanedPath.split('/').map(encodeURIComponent).join('/')}` : base;
+}
+
+function webdavHeaders(config, extra = {}) {
+    const headers = { ...extra };
+    if (config.username || config.password) {
+        headers.Authorization = `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
+    }
+    return headers;
+}
+
+async function ensureWebdavDirectory(config) {
+    const parts = normalizeWebdavPath(config.directory).split('/').filter(Boolean);
+    let current = '';
+
+    for (const part of parts) {
+        current = normalizeWebdavPath(current, part);
+        const resp = await fetch(buildWebdavUrl(config, current), {
+            method: 'MKCOL',
+            headers: webdavHeaders(config)
+        });
+        if (![201, 405, 301, 302].includes(resp.status)) {
+            throw new Error(`创建 WebDAV 目录失败：HTTP ${resp.status}`);
+        }
+    }
+}
+
+function getWebdavBackupPath(config) {
+    return normalizeWebdavPath(config.directory, config.filename || 'mymsgpush-backup.json');
 }
 
 function runCommand(command, args, options = {}) {
@@ -258,28 +417,64 @@ router.post('/reminders/:id/test-notify', adminAuth, async (req, res) => {
 router.get('/logs', adminAuth, (req, res) => {
     try {
         const { page = 1, pageSize = 50 } = req.query;
-        const total = db.get('SELECT COUNT(*) as count FROM notification_logs').count;
+        const { whereSql, params } = buildLogFilters(req.query);
+        const total = db.get(
+            `SELECT COUNT(*) as count FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql}`,
+            params
+        ).count;
         const logs = db.all(
-            'SELECT nl.*, r.title as reminder_title FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id ORDER BY nl.created_at DESC LIMIT ? OFFSET ?',
-            [Number(pageSize), (Number(page) - 1) * Number(pageSize)]
+            `SELECT nl.*, r.title as reminder_title FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql} ORDER BY nl.created_at DESC LIMIT ? OFFSET ?`,
+            [...params, Number(pageSize), (Number(page) - 1) * Number(pageSize)]
         );
         res.json({ logs, total, page: Number(page), pageSize: Number(pageSize) });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.get('/data/export', adminAuth, (req, res) => {
+router.delete('/logs/:id', adminAuth, (req, res) => {
     try {
-        const payload = {
-            version: 1,
-            exported_at: new Date().toISOString(),
-            app: 'mymsgpush',
-            tables: {}
-        };
+        db.run('DELETE FROM notification_logs WHERE id = ?', [Number(req.params.id)]);
+        res.json({ success: true, deleted: 1 });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
 
-        for (const table of Object.keys(EXPORT_TABLES)) {
-            payload.tables[table] = db.all(`SELECT * FROM ${table}`);
+router.post('/logs/delete', adminAuth, (req, res) => {
+    try {
+        const { mode, ids = [], filters = {} } = req.body;
+
+        if (mode === 'selected') {
+            const selectedIds = ids.map(Number).filter(Number.isFinite);
+            if (!selectedIds.length) return res.status(400).json({ error: '请选择要删除的日志' });
+
+            const placeholders = selectedIds.map(() => '?').join(', ');
+            db.run(`DELETE FROM notification_logs WHERE id IN (${placeholders})`, selectedIds);
+            return res.json({ success: true, deleted: selectedIds.length });
         }
 
+        if (mode === 'filtered') {
+            const { whereSql, params } = buildLogFilters(filters);
+            if (!whereSql) return res.status(400).json({ error: '请先设置筛选条件，避免误删全部日志' });
+
+            const total = db.get(
+                `SELECT COUNT(*) as count FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql}`,
+                params
+            ).count;
+            db.run(`DELETE FROM notification_logs WHERE id IN (SELECT nl.id FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql})`, params);
+            return res.json({ success: true, deleted: total });
+        }
+
+        if (mode === 'all') {
+            const total = db.get('SELECT COUNT(*) as count FROM notification_logs').count;
+            db.run('DELETE FROM notification_logs');
+            return res.json({ success: true, deleted: total });
+        }
+
+        return res.status(400).json({ error: '删除模式不正确' });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.get('/data/export', adminAuth, (req, res) => {
+    try {
+        const payload = createExportPayload();
         const filename = `mymsgpush-backup-${new Date().toISOString().slice(0, 10)}.json`;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -290,30 +485,91 @@ router.get('/data/export', adminAuth, (req, res) => {
 router.post('/data/import', adminAuth, (req, res) => {
     try {
         const { mode = 'merge', data } = req.body;
-        const tables = data && data.tables ? data.tables : data;
-        if (!tables || typeof tables !== 'object') return res.status(400).json({ error: '备份文件格式不正确' });
-        if (!['merge', 'replace'].includes(mode)) return res.status(400).json({ error: '导入模式不正确' });
-
-        if (mode === 'replace') {
-            const deleteOrder = ['notification_logs', 'reminders', 'notify_channels', 'settings', 'admin_users'];
-            for (const table of deleteOrder) {
-                if (Array.isArray(tables[table])) db.run(`DELETE FROM ${table}`);
-            }
-        }
-
-        const imported = {};
-        for (const table of Object.keys(EXPORT_TABLES)) {
-            imported[table] = insertRows(table, Array.isArray(tables[table]) ? tables[table] : []);
-        }
-
-        const adminCount = db.get('SELECT COUNT(*) as count FROM admin_users').count;
-        if (adminCount === 0) {
-            db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', [req.adminUser.username, hashPassword(req.adminPassword)]);
-            imported.admin_users = 1;
-        }
-
+        const imported = importBackupPayload(data, mode, { username: req.adminUser.username, password: req.adminPassword });
         res.json({ success: true, mode, imported });
+    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
+
+router.get('/webdav', adminAuth, (req, res) => {
+    try {
+        res.json(maskWebdavConfig(parseWebdavConfig()));
     } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/webdav', adminAuth, (req, res) => {
+    try {
+        const oldConfig = parseWebdavConfig();
+        const incoming = req.body || {};
+        const config = {
+            enabled: Boolean(incoming.enabled),
+            url: String(incoming.url || '').trim(),
+            username: String(incoming.username || '').trim(),
+            password: incoming.password === '********' || incoming.password === undefined ? oldConfig.password : String(incoming.password || ''),
+            directory: String(incoming.directory || 'mymsgpush').trim() || 'mymsgpush',
+            filename: String(incoming.filename || 'mymsgpush-backup.json').trim() || 'mymsgpush-backup.json'
+        };
+
+        if (config.enabled && !config.url) return res.status(400).json({ error: '请填写 WebDAV 地址' });
+        setSetting('webdav_config', JSON.stringify(config));
+        res.json({ success: true, config: maskWebdavConfig(config) });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/webdav/test', adminAuth, async (req, res) => {
+    try {
+        const config = parseWebdavConfig();
+        if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
+
+        await ensureWebdavDirectory(config);
+        const resp = await fetch(buildWebdavUrl(config, normalizeWebdavPath(config.directory)), {
+            method: 'PROPFIND',
+            headers: webdavHeaders(config, { Depth: '0' })
+        });
+        if (![200, 207].includes(resp.status)) return res.status(400).json({ error: `WebDAV 连接失败：HTTP ${resp.status}` });
+        res.json({ success: true, message: 'WebDAV 连接正常' });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/webdav/backup', adminAuth, async (req, res) => {
+    try {
+        const config = parseWebdavConfig();
+        if (!config.enabled) return res.status(400).json({ error: '请先启用 WebDAV 备份' });
+        if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
+
+        await ensureWebdavDirectory(config);
+        const payload = createExportPayload();
+        const body = JSON.stringify(payload, null, 2);
+        const remotePath = getWebdavBackupPath(config);
+        const resp = await fetch(buildWebdavUrl(config, remotePath), {
+            method: 'PUT',
+            headers: webdavHeaders(config, { 'Content-Type': 'application/json; charset=utf-8' }),
+            body
+        });
+
+        if (![200, 201, 204].includes(resp.status)) return res.status(400).json({ error: `WebDAV 备份失败：HTTP ${resp.status}` });
+        setSetting('webdav_last_backup_at', new Date().toISOString());
+        res.json({ success: true, remotePath, bytes: Buffer.byteLength(body) });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/webdav/restore', adminAuth, async (req, res) => {
+    try {
+        const { mode = 'merge' } = req.body || {};
+        const config = parseWebdavConfig();
+        if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
+
+        const remotePath = getWebdavBackupPath(config);
+        const resp = await fetch(buildWebdavUrl(config, remotePath), {
+            method: 'GET',
+            headers: webdavHeaders(config)
+        });
+        if (resp.status !== 200) return res.status(400).json({ error: `读取 WebDAV 备份失败：HTTP ${resp.status}` });
+
+        const data = await resp.json();
+        const imported = importBackupPayload(data, mode, { username: req.adminUser.username, password: req.adminPassword });
+        setSetting('webdav_last_restore_at', new Date().toISOString());
+        res.json({ success: true, mode, remotePath, imported });
+    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
 router.put('/change-password', adminAuth, (req, res) => {

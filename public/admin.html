@@ -183,6 +183,12 @@
         .update-log{height:220px;overflow:auto;background:#0b1020;color:#d6e1ff;border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;margin-top:14px;}
         .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
         .file-input{display:block;width:100%;padding:11px 12px;background:#f8fafc;border:1px dashed var(--border);border-radius:8px;color:var(--text-secondary);font-size:13px;margin-bottom:12px;}
+        .filter-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);background:#fff;}
+        .filter-bar input,.filter-bar select{padding:9px 11px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;}
+        .filter-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+        .mini-btn{padding:9px 12px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:var(--bg-hover);color:var(--text-secondary);}
+        .mini-btn.primary{background:var(--accent);color:#fff;}
+        .mini-btn.danger{background:rgba(243,18,96,.1);color:var(--danger);}
 
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
         @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
@@ -250,8 +256,21 @@
         <div class="tab-content" id="tab-logs">
             <div class="table-container">
                 <div class="table-header"><h3>📜 通知发送日志</h3></div>
+                <div class="filter-bar">
+                    <input type="text" id="logKeyword" placeholder="搜索标题/平台/消息">
+                    <select id="logPlatform"><option value="">全部平台</option><option value="telegram">Telegram</option><option value="wecom">企业微信</option><option value="bark">Bark</option><option value="feishu">飞书</option><option value="dingtalk">钉钉</option><option value="custom_webhook">自定义Webhook</option></select>
+                    <select id="logSuccess"><option value="">全部状态</option><option value="1">成功</option><option value="0">失败</option></select>
+                    <input type="datetime-local" id="logDateFrom">
+                    <input type="datetime-local" id="logDateTo">
+                    <div class="filter-actions">
+                        <button class="mini-btn primary" onclick="loadLogs(1)">筛选</button>
+                        <button class="mini-btn" onclick="resetLogFilters()">重置</button>
+                        <button class="mini-btn danger" onclick="deleteSelectedLogs()">删除选中</button>
+                        <button class="mini-btn danger" onclick="deleteFilteredLogs()">删除筛选</button>
+                    </div>
+                </div>
                 <div style="overflow-x:auto;">
-                    <table><thead><tr><th>提醒标题</th><th>平台</th><th>状态</th><th>时间</th></tr></thead><tbody id="logsTableBody"></tbody></table>
+                    <table><thead><tr><th><input type="checkbox" id="selectAllLogs" onchange="toggleAllLogs(this.checked)"></th><th>提醒标题</th><th>平台</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody id="logsTableBody"></tbody></table>
                 </div>
                 <div class="pagination" id="logsPagination" style="padding:16px 24px;border-top:1px solid var(--border);justify-content:space-between;"></div>
             </div>
@@ -299,6 +318,30 @@
                         <button class="form-btn secondary" onclick="importData('replace')">覆盖导入</button>
                     </div>
                     <div id="dataImportStatus" style="font-size:12px;margin-top:10px;color:var(--text-muted);">旧版本没有导出功能时，请直接保留或复制服务器上的 data/reminders.db。</div>
+                </div>
+                <div class="settings-card" style="grid-column:1/-1;">
+                    <div class="section-title">WebDAV 备份与恢复</div>
+                    <p>保存 WebDAV 设置后，可以把当前数据备份为 JSON，也可以从远端备份合并或覆盖恢复。</p>
+                    <div class="form-row">
+                        <div class="form-group"><label>WebDAV 地址</label><input type="url" id="webdavUrl" placeholder="https://example.com/dav"></div>
+                        <div class="form-group"><label>用户名</label><input type="text" id="webdavUsername" placeholder="WebDAV 用户名"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>密码</label><input type="password" id="webdavPassword" placeholder="留空表示不修改已保存密码"></div>
+                        <div class="form-group"><label>远端目录</label><input type="text" id="webdavDirectory" placeholder="mymsgpush"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>备份文件名</label><input type="text" id="webdavFilename" placeholder="mymsgpush-backup.json"></div>
+                        <div class="form-group"><label>启用备份</label><select id="webdavEnabled"><option value="1">启用</option><option value="0">停用</option></select></div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="form-btn primary" onclick="saveWebdavConfig()">保存 WebDAV 设置</button>
+                        <button class="form-btn secondary" onclick="testWebdav()">测试连接</button>
+                        <button class="form-btn secondary" onclick="backupToWebdav()">备份到 WebDAV</button>
+                        <button class="form-btn secondary" onclick="restoreFromWebdav('merge')">合并恢复</button>
+                        <button class="form-btn secondary" onclick="restoreFromWebdav('replace')">覆盖恢复</button>
+                    </div>
+                    <div id="webdavStatus" style="font-size:12px;margin-top:10px;color:var(--text-muted);">未加载 WebDAV 设置。</div>
                 </div>
                 <div class="settings-card" style="grid-column:1/-1;">
                     <div class="section-title">系统在线更新</div>
@@ -375,7 +418,7 @@ async function doLogin(){
     if(!u||!p){document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='请输入用户名和密码';return;}
     try{
         const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-        if(r.ok){authToken=btoa(`${u}:${p}`);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;document.getElementById('profileUsername').value=u;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();}
+        if(r.ok){authToken=btoa(`${u}:${p}`);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;document.getElementById('profileUsername').value=u;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();loadWebdavConfig();}
         else{document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='用户名或密码错误';}
     }catch(e){toast('登录失败','error');}
 }
@@ -512,12 +555,33 @@ async function testChannel(type){
 }
 
 // Logs
+function getLogFilters(){
+    const from=document.getElementById('logDateFrom').value;
+    const to=document.getElementById('logDateTo').value;
+    const filters={
+        keyword:document.getElementById('logKeyword').value.trim(),
+        platform:document.getElementById('logPlatform').value,
+        success:document.getElementById('logSuccess').value,
+        date_from:from?new Date(from).toISOString():'',
+        date_to:to?new Date(to).toISOString():''
+    };
+    Object.keys(filters).forEach(k=>{if(filters[k]==='')delete filters[k];});
+    return filters;
+}
 async function loadLogs(page=1){
-    try{const d=await(await fetch(`/admin/logs?page=${page}&pageSize=20`,{headers:H()})).json();
-    document.getElementById('logsTableBody').innerHTML=d.logs.map(l=>`<tr><td style="font-weight:500;color:var(--text-primary);">${l.reminder_title||'-'}</td><td><span class="badge" style="background:rgba(67,97,238,0.15);color:var(--accent);">${l.platform}</span></td><td><span class="badge ${l.success?'badge-success':'badge-fail'}">${l.success?'成功':'失败'}</span></td><td style="white-space:nowrap;">${new Date(l.created_at).toLocaleString('zh-CN')}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">暂无日志</td></tr>';
+    try{const params=new URLSearchParams({page,pageSize:20});Object.entries(getLogFilters()).forEach(([k,v])=>params.set(k,v));
+    const d=await(await fetch(`/admin/logs?${params}`,{headers:H()})).json();
+    document.getElementById('selectAllLogs').checked=false;
+    document.getElementById('logsTableBody').innerHTML=d.logs.map(l=>`<tr><td><input type="checkbox" class="log-check" value="${l.id}"></td><td style="font-weight:500;color:var(--text-primary);">${l.reminder_title||'-'}</td><td><span class="badge" style="background:rgba(67,97,238,0.15);color:var(--accent);">${l.platform}</span></td><td><span class="badge ${l.success?'badge-success':'badge-fail'}">${l.success?'成功':'失败'}</span></td><td style="white-space:nowrap;">${new Date(l.created_at).toLocaleString('zh-CN')}</td><td><button class="mini-btn danger" onclick="deleteLog(${l.id})">删除</button></td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">暂无日志</td></tr>';
     const tp=Math.ceil(d.total/d.pageSize)||1;
     document.getElementById('logsPagination').innerHTML=`<span>共${d.total}条 第${d.page}/${tp}页</span><div style="display:flex;gap:8px;"><button class="page-btn" ${d.page<=1?'disabled':''} onclick="loadLogs(${d.page-1})">上一页</button><button class="page-btn" ${d.page>=tp?'disabled':''} onclick="loadLogs(${d.page+1})">下一页</button></div>`;}catch(e){toast('加载日志失败','error');}
 }
+function resetLogFilters(){['logKeyword','logPlatform','logSuccess','logDateFrom','logDateTo'].forEach(id=>document.getElementById(id).value='');loadLogs(1);}
+function toggleAllLogs(checked){document.querySelectorAll('.log-check').forEach(el=>el.checked=checked);}
+function selectedLogIds(){return Array.from(document.querySelectorAll('.log-check:checked')).map(el=>Number(el.value)).filter(Boolean);}
+async function deleteLog(id){if(!confirm('确定删除这条日志？'))return;const r=await fetch(`/admin/logs/${id}`,{method:'DELETE',headers:H()});if(r.ok){toast('日志已删除');loadLogs();loadStats();}else toast('删除失败','error');}
+async function deleteSelectedLogs(){const ids=selectedLogIds();if(!ids.length){toast('请先选择日志','error');return;}if(!confirm(`确定删除选中的 ${ids.length} 条日志？`))return;const r=await fetch('/admin/logs/delete',{method:'POST',headers:H(),body:JSON.stringify({mode:'selected',ids})});const d=await r.json().catch(()=>({}));if(r.ok){toast(`已删除 ${d.deleted||ids.length} 条日志`);loadLogs();loadStats();}else toast(d.error||'删除失败','error');}
+async function deleteFilteredLogs(){const filters=getLogFilters();if(!Object.keys(filters).length){toast('请先设置筛选条件，避免误删全部日志','error');return;}if(!confirm('确定删除当前筛选条件下的所有日志？'))return;const r=await fetch('/admin/logs/delete',{method:'POST',headers:H(),body:JSON.stringify({mode:'filtered',filters})});const d=await r.json().catch(()=>({}));if(r.ok){toast(`已删除 ${d.deleted||0} 条日志`);loadLogs(1);loadStats();}else toast(d.error||'删除失败','error');}
 async function changePassword(){
     const currentPassword=document.getElementById('currentPassword').value;
     const newPassword=document.getElementById('newPassword').value;
@@ -604,6 +668,65 @@ async function importData(mode){
         loadFrontendPwd();
         loadSecurity();
     }catch(e){toast('导入文件解析失败','error');}
+}
+
+async function loadWebdavConfig(){
+    try{
+        const d=await(await fetch('/admin/webdav',{headers:H()})).json();
+        document.getElementById('webdavEnabled').value=d.enabled?'1':'0';
+        document.getElementById('webdavUrl').value=d.url||'';
+        document.getElementById('webdavUsername').value=d.username||'';
+        document.getElementById('webdavPassword').value=d.password||'';
+        document.getElementById('webdavDirectory').value=d.directory||'mymsgpush';
+        document.getElementById('webdavFilename').value=d.filename||'mymsgpush-backup.json';
+        document.getElementById('webdavStatus').textContent=d.url?'WebDAV 设置已加载。':'尚未配置 WebDAV。';
+    }catch(e){document.getElementById('webdavStatus').textContent='WebDAV 设置加载失败。';}
+}
+
+function getWebdavForm(){
+    return {
+        enabled:document.getElementById('webdavEnabled').value==='1',
+        url:document.getElementById('webdavUrl').value.trim(),
+        username:document.getElementById('webdavUsername').value.trim(),
+        password:document.getElementById('webdavPassword').value,
+        directory:document.getElementById('webdavDirectory').value.trim()||'mymsgpush',
+        filename:document.getElementById('webdavFilename').value.trim()||'mymsgpush-backup.json'
+    };
+}
+
+async function saveWebdavConfig(){
+    const r=await fetch('/admin/webdav',{method:'PUT',headers:H(),body:JSON.stringify(getWebdavForm())});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok){toast('WebDAV 设置已保存');document.getElementById('webdavPassword').value=d.config&&d.config.password?d.config.password:'';document.getElementById('webdavStatus').textContent='WebDAV 设置已保存。';}
+    else toast(d.error||'保存失败','error');
+}
+
+async function testWebdav(){
+    await saveWebdavConfig();
+    const r=await fetch('/admin/webdav/test',{method:'POST',headers:H()});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok){toast('WebDAV 连接正常');document.getElementById('webdavStatus').textContent=d.message||'WebDAV 连接正常。';}
+    else{toast(d.error||'WebDAV 测试失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 测试失败。';}
+}
+
+async function backupToWebdav(){
+    await saveWebdavConfig();
+    const r=await fetch('/admin/webdav/backup',{method:'POST',headers:H()});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok){toast('已备份到 WebDAV');document.getElementById('webdavStatus').textContent=`备份完成：${d.remotePath}，${d.bytes||0} bytes。`;}
+    else{toast(d.error||'WebDAV 备份失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 备份失败。';}
+}
+
+async function restoreFromWebdav(mode){
+    if(mode==='replace'&&!confirm('覆盖恢复会替换备份文件中包含的数据表，确定继续？'))return;
+    const r=await fetch('/admin/webdav/restore',{method:'POST',headers:H(),body:JSON.stringify({mode})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok){
+        const imported=d.imported||{};
+        toast('WebDAV 恢复完成');
+        document.getElementById('webdavStatus').textContent=`恢复完成：提醒 ${imported.reminders||0} 条，渠道 ${imported.notify_channels||0} 条，日志 ${imported.notification_logs||0} 条。`;
+        loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();loadWebdavConfig();
+    }else{toast(d.error||'WebDAV 恢复失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 恢复失败。';}
 }
 
 function renderUpdate(d){
