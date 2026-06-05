@@ -395,6 +395,7 @@
 <script>
 let authToken='';
 let updateTimer=null;
+let updateStartedFromUi=false;
 const CYCLE_TEXT={once:'单次提醒',weekly:'每周循环',monthly:'每月循环',quarterly:'每3个月循环',half_yearly:'每6个月循环',yearly:'每年循环'};
 const CHANNEL_META={
     telegram:{icon:'✈️',name:'Telegram',fields:[{key:'bot_token',label:'Bot Token',placeholder:'123456:ABC-DEF...',type:'input'},{key:'chat_id',label:'Chat ID',placeholder:'你的 Chat ID',type:'input'}]},
@@ -755,7 +756,17 @@ async function pollUpdate(){
     try{
         const d=await(await fetch('/admin/update/status',{headers:H()})).json();
         renderUpdate(d);
-        if(!d.running&&updateTimer){clearInterval(updateTimer);updateTimer=null;}
+        if(!d.running&&updateTimer){
+            clearInterval(updateTimer);
+            updateTimer=null;
+            if(updateStartedFromUi&&!d.lastError){
+                updateStartedFromUi=false;
+                toast('更新完成，页面即将刷新');
+                setTimeout(()=>window.location.reload(),1200);
+            }else{
+                updateStartedFromUi=false;
+            }
+        }
     }catch(e){}
 }
 async function startUpdate(){
@@ -764,6 +775,7 @@ async function startUpdate(){
         const r=await fetch('/admin/update/start',{method:'POST',headers:H()});
         const d=await r.json().catch(()=>({}));
         if(!r.ok){toast(d.error||'启动更新失败','error');return;}
+        updateStartedFromUi=true;
         toast('更新任务已启动');
         pollUpdate();
         if(updateTimer)clearInterval(updateTimer);
