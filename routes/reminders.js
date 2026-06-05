@@ -1,6 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { hasValidFrontendAuth } = require('./frontendAuth');
+const { verifyPassword } = require('../security');
+
+function hasAdminAuth(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Basic ')) return false;
+    const decodedAuth = Buffer.from(authHeader.split(' ')[1], 'base64').toString();
+    const separatorIndex = decodedAuth.indexOf(':');
+    const username = separatorIndex >= 0 ? decodedAuth.slice(0, separatorIndex) : decodedAuth;
+    const password = separatorIndex >= 0 ? decodedAuth.slice(separatorIndex + 1) : '';
+    const user = db.get('SELECT * FROM admin_users WHERE username = ?', [username]);
+    return Boolean(user && verifyPassword(password, user.password));
+}
+
+function reminderAuth(req, res, next) {
+    if (hasAdminAuth(req) || hasValidFrontendAuth(req)) return next();
+    return res.status(401).json({ error: '未授权' });
+}
+
+router.use(reminderAuth);
 
 // GET /api/reminders - 获取所有提醒
 router.get('/', (req, res) => {

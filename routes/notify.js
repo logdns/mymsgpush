@@ -3,9 +3,10 @@ const router = express.Router();
 const db = require('../db');
 const { sendNotifications } = require('../notifier');
 const { calculateNextRemindTime } = require('../cycles');
+const { frontendAuth } = require('./frontendAuth');
 
 // POST /api/notify/trigger - 手动触发通知检查
-router.post('/trigger', async (req, res) => {
+router.post('/trigger', frontendAuth, async (req, res) => {
     try {
         const now = new Date();
         const reminders = db.all(

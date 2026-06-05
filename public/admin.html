@@ -169,11 +169,23 @@
         .admin-toast.show{transform:translateX(0);}
         .admin-toast.success{background:var(--success);color:#000;}
         .admin-toast.error{background:var(--danger);color:#fff;}
-        .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px;}
-        .settings-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+        .settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start;}
+        .settings-card{min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
         .settings-card p{color:var(--text-secondary);font-size:13px;margin-bottom:16px;}
         .settings-card input{width:100%;padding:12px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;margin-bottom:12px;outline:none;}
         .settings-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,111,238,.12);}
+        .account-security-card{grid-column:span 2;}
+        .account-security-layout{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:24px;margin-top:18px;}
+        .account-section{min-width:0;display:flex;flex-direction:column;}
+        .account-section+.account-section{border-left:1px solid var(--border);padding-left:24px;}
+        .account-section-title{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px;}
+        .account-section-desc{font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;}
+        .settings-field{margin-bottom:12px;}
+        .settings-field label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;}
+        .settings-field input{margin-bottom:0;background:#fff;}
+        .password-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .account-actions{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:2px;}
+        .account-actions .form-btn{width:auto;}
         .security-list{display:grid;gap:10px;margin-top:8px;}
         .security-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-secondary);}
         .security-row strong{color:var(--text-primary);font-weight:600;}
@@ -194,7 +206,8 @@
         .admin-footer a:hover{text-decoration:underline;}
 
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-        @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
+        @media(max-width:1180px){.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.account-security-card{grid-column:1/-1;}}
+        @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards,.settings-grid,.account-security-layout,.password-fields{grid-template-columns:1fr;}.account-security-card{grid-column:1/-1;}.account-section+.account-section{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:18px;}.account-actions .form-btn{width:100%;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
     </style>
 </head>
 <body>
@@ -289,20 +302,47 @@
                     <button class="form-btn primary" onclick="saveFrontendPwd()">保存前台密码</button>
                     <div id="frontPwdStatus" style="font-size:12px;margin-top:8px;color:var(--text-muted);"></div>
                 </div>
-                <div class="settings-card">
-                    <div class="section-title">管理员账户</div>
-                    <p>修改后台登录账户。修改后会退出登录，请用新信息重新进入后台。</p>
-                    <input type="text" id="profileUsername" placeholder="管理员用户名">
-                    <input type="password" id="profileCurrentPassword" placeholder="当前密码">
-                    <button class="form-btn primary" onclick="saveProfile()">保存账户</button>
-                </div>
-                <div class="settings-card">
-                    <div class="section-title">修改管理员密码</div>
-                    <p>密码至少 8 位。为了防止误操作，需要输入当前密码。</p>
-                    <input type="password" id="currentPassword" placeholder="当前密码">
-                    <input type="password" id="newPassword" placeholder="新密码，至少 8 位">
-                    <input type="password" id="confirmPassword" placeholder="再次输入新密码">
-                    <button class="form-btn primary" onclick="changePassword()">保存管理员密码</button>
+                <div class="settings-card account-security-card">
+                    <div class="section-title">管理员安全</div>
+                    <p>集中管理后台登录账户和管理员密码。保存任一项后会退出登录，请用新信息重新进入后台。</p>
+                    <div class="account-security-layout">
+                        <div class="account-section">
+                            <div class="account-section-title">登录账户</div>
+                            <div class="account-section-desc">修改后台登录用户名，需要输入当前管理员密码确认。</div>
+                            <div class="settings-field">
+                                <label for="profileUsername">管理员用户名</label>
+                                <input type="text" id="profileUsername" placeholder="管理员用户名">
+                            </div>
+                            <div class="settings-field">
+                                <label for="profileCurrentPassword">当前密码</label>
+                                <input type="password" id="profileCurrentPassword" placeholder="用于确认账户修改">
+                            </div>
+                            <div class="account-actions">
+                                <button class="form-btn primary" onclick="saveProfile()">保存账户</button>
+                            </div>
+                        </div>
+                        <div class="account-section">
+                            <div class="account-section-title">管理员密码</div>
+                            <div class="account-section-desc">新密码至少 8 位。为了防止误操作，需要先输入当前密码。</div>
+                            <div class="settings-field">
+                                <label for="currentPassword">当前密码</label>
+                                <input type="password" id="currentPassword" placeholder="当前管理员密码">
+                            </div>
+                            <div class="password-fields">
+                                <div class="settings-field">
+                                    <label for="newPassword">新密码</label>
+                                    <input type="password" id="newPassword" placeholder="至少 8 位">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="confirmPassword">确认新密码</label>
+                                    <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                                </div>
+                            </div>
+                            <div class="account-actions">
+                                <button class="form-btn primary" onclick="changePassword()">保存管理员密码</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="settings-card">
                     <div class="section-title">安全状态</div>
@@ -420,6 +460,10 @@ const CHANNEL_META={
 
 function H(){return{'Content-Type':'application/json','Authorization':`Basic ${authToken}`};}
 function toast(msg,type='success'){const t=document.getElementById('adminToast');t.className=`admin-toast ${type} show`;t.textContent=msg;setTimeout(()=>t.classList.remove('show'),3000);}
+function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function jsString(value){return esc(JSON.stringify(String(value??'')));}
+function safeUrl(value){if(!value)return '';try{const url=new URL(value,window.location.origin);return ['http:','https:'].includes(url.protocol)?url.href:'';}catch{return '';}}
+function safeCycle(value){return Object.prototype.hasOwnProperty.call(CYCLE_TEXT,value)?value:'once';}
 
 async function doLogin(){
     const u=document.getElementById('loginUsername').value,p=document.getElementById('loginPassword').value;
@@ -454,22 +498,26 @@ async function loadReminders(page=1){
         document.getElementById('reminderCards').innerHTML=d.reminders.map(r=>{
             const isPending=r.status===0;
             const time=new Date(r.remind_time).toLocaleString('zh-CN');
+            const cycle=safeCycle(r.cycle_type);
+            const link=safeUrl(r.link);
+            const editPayload=jsString(JSON.stringify(r));
+            const reminderId=jsString(r.id);
             return `<div class="r-card">
                 <div class="r-card-status ${isPending?'pending':'done'}"></div>
                 <div class="r-card-header">
-                    <div class="r-card-title">${r.title}</div>
+                    <div class="r-card-title">${esc(r.title)}</div>
                     <span class="r-card-badge ${isPending?'pending':'done'}">${isPending?'⏳ 待提醒':'✅ 已完成'}</span>
                 </div>
-                <div class="r-card-content">${r.content}</div>
+                <div class="r-card-content">${esc(r.content)}</div>
                 <div class="r-card-meta">
-                    <span>⏰ ${time}</span>
-                    <span>🔁 ${CYCLE_TEXT[r.cycle_type]||r.cycle_type}</span>
+                    <span>⏰ ${esc(time)}</span>
+                    <span>🔁 ${esc(CYCLE_TEXT[cycle])}</span>
                 </div>
                 <div class="r-card-actions">
-                    <button class="btn-edit" onclick='showEditModal(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️ 编辑</button>
-                    ${r.link?`<button class="btn-link" onclick="window.open('${r.link}','_blank')">🔗 链接</button>`:''}
-                    <button class="btn-test" onclick="testNotify('${r.id}')">📤 测试推送</button>
-                    <button class="btn-del" onclick="delReminder('${r.id}')">🗑 删除</button>
+                    <button class="btn-edit" onclick="showEditModal(JSON.parse(${editPayload}))">✏️ 编辑</button>
+                    ${link?`<button class="btn-link" onclick="window.open(${jsString(link)},'_blank','noopener')">🔗 链接</button>`:''}
+                    <button class="btn-test" onclick="testNotify(${reminderId})">📤 测试推送</button>
+                    <button class="btn-del" onclick="delReminder(${reminderId})">🗑 删除</button>
                 </div>
             </div>`;
         }).join('');
@@ -534,14 +582,16 @@ async function loadChannels(){
     document.getElementById('channelCards').innerHTML=chs.map(ch=>{
         const m=CHANNEL_META[ch.channel_type]||{icon:'📡',name:ch.channel_name,fields:[]};
         let cfg={};try{cfg=JSON.parse(ch.config);}catch{}
-        return`<div class="channel-card"><div class="channel-card-header"><h4>${m.icon} ${m.name}</h4>
-            <label class="toggle"><input type="checkbox" id="toggle-${ch.channel_type}" ${ch.enabled?'checked':''}><span class="toggle-slider"></span></label></div>
-            ${m.fields.map(f=>`<div class="channel-field"><label>${f.label}</label>
-                ${f.type==='textarea'?`<textarea id="cfg-${ch.channel_type}-${f.key}" placeholder="${f.placeholder}">${cfg[f.key]||''}</textarea>`
-                :`<input type="text" id="cfg-${ch.channel_type}-${f.key}" value="${(cfg[f.key]||'').replace(/"/g,'&quot;')}" placeholder="${f.placeholder}">`}
-                ${f.hint?`<div class="hint">${f.hint}</div>`:''}</div>`).join('')}
-            <div class="channel-actions"><button class="ch-btn save" onclick="saveChannel('${ch.channel_type}')">💾 保存</button><button class="ch-btn test-ch" onclick="testChannel('${ch.channel_type}')">📤 测试</button></div>
-            <div class="channel-status" id="status-${ch.channel_type}"></div></div>`;
+        const channelType=esc(ch.channel_type);
+        const channelArg=jsString(ch.channel_type);
+        return`<div class="channel-card"><div class="channel-card-header"><h4>${esc(m.icon)} ${esc(m.name)}</h4>
+            <label class="toggle"><input type="checkbox" id="toggle-${channelType}" ${ch.enabled?'checked':''}><span class="toggle-slider"></span></label></div>
+            ${m.fields.map(f=>`<div class="channel-field"><label>${esc(f.label)}</label>
+                ${f.type==='textarea'?`<textarea id="cfg-${channelType}-${esc(f.key)}" placeholder="${esc(f.placeholder)}">${esc(cfg[f.key]||'')}</textarea>`
+                :`<input type="text" id="cfg-${channelType}-${esc(f.key)}" value="${esc(cfg[f.key]||'')}" placeholder="${esc(f.placeholder)}">`}
+                ${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}</div>`).join('')}
+            <div class="channel-actions"><button class="ch-btn save" onclick="saveChannel(${channelArg})">💾 保存</button><button class="ch-btn test-ch" onclick="testChannel(${channelArg})">📤 测试</button></div>
+            <div class="channel-status" id="status-${channelType}"></div></div>`;
     }).join('');}catch(e){toast('加载渠道失败','error');}
 }
 async function saveChannel(type){
@@ -580,7 +630,10 @@ async function loadLogs(page=1){
     try{const params=new URLSearchParams({page,pageSize:20});Object.entries(getLogFilters()).forEach(([k,v])=>params.set(k,v));
     const d=await(await fetch(`/admin/logs?${params}`,{headers:H()})).json();
     document.getElementById('selectAllLogs').checked=false;
-    document.getElementById('logsTableBody').innerHTML=d.logs.map(l=>`<tr><td><input type="checkbox" class="log-check" value="${l.id}"></td><td style="font-weight:500;color:var(--text-primary);">${l.reminder_title||'-'}</td><td><span class="badge" style="background:rgba(67,97,238,0.15);color:var(--accent);">${l.platform}</span></td><td><span class="badge ${l.success?'badge-success':'badge-fail'}">${l.success?'成功':'失败'}</span></td><td style="white-space:nowrap;">${new Date(l.created_at).toLocaleString('zh-CN')}</td><td><button class="mini-btn danger" onclick="deleteLog(${l.id})">删除</button></td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">暂无日志</td></tr>';
+    document.getElementById('logsTableBody').innerHTML=d.logs.map(l=>{
+        const id=Number(l.id)||0;
+        return `<tr><td><input type="checkbox" class="log-check" value="${id}"></td><td style="font-weight:500;color:var(--text-primary);">${esc(l.reminder_title||'-')}</td><td><span class="badge" style="background:rgba(67,97,238,0.15);color:var(--accent);">${esc(l.platform)}</span></td><td><span class="badge ${l.success?'badge-success':'badge-fail'}">${l.success?'成功':'失败'}</span></td><td style="white-space:nowrap;">${esc(new Date(l.created_at).toLocaleString('zh-CN'))}</td><td><button class="mini-btn danger" onclick="deleteLog(${id})">删除</button></td></tr>`;
+    }).join('')||'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">暂无日志</td></tr>';
     const tp=Math.ceil(d.total/d.pageSize)||1;
     document.getElementById('logsPagination').innerHTML=`<span>共${d.total}条 第${d.page}/${tp}页</span><div style="display:flex;gap:8px;"><button class="page-btn" ${d.page<=1?'disabled':''} onclick="loadLogs(${d.page-1})">上一页</button><button class="page-btn" ${d.page>=tp?'disabled':''} onclick="loadLogs(${d.page+1})">下一页</button></div>`;}catch(e){toast('加载日志失败','error');}
 }
@@ -606,7 +659,7 @@ async function loadSecurity(){
         const d=await(await fetch('/admin/security',{headers:H()})).json();
         document.getElementById('profileUsername').value=d.username||'';
         document.getElementById('securityStatus').innerHTML=`
-            <div class="security-row"><span>管理员用户名</span><strong>${d.username||'-'}</strong></div>
+            <div class="security-row"><span>管理员用户名</span><strong>${esc(d.username||'-')}</strong></div>
             <div class="security-row"><span>管理员密码存储</span><strong>${d.passwordHashed?'已加密':'待迁移'}</strong></div>
             <div class="security-row"><span>前台访问保护</span><strong>${d.frontendPasswordEnabled?'已开启':'未开启'}</strong></div>
             <div class="security-row"><span>默认用户名</span><strong>${d.defaultsChanged?'已修改':'仍为 admin'}</strong></div>`;

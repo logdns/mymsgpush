@@ -164,6 +164,42 @@
         }
 
         const API_BASE = '/api/reminders';
+        let remindersLoaded = false;
+
+        function loadRemindersOnce() {
+            if (remindersLoaded) return;
+            remindersLoaded = true;
+            loadReminders();
+        }
+
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHTML(value).replace(/`/g, '&#96;');
+        }
+
+        function safeReminderLink(value) {
+            if (!value) return '#';
+            try {
+                const url = new URL(value, window.location.origin);
+                if (!['http:', 'https:'].includes(url.protocol)) return '#';
+                return url.href;
+            } catch {
+                return '#';
+            }
+        }
+
+        function jsString(value) {
+            return escapeAttr(JSON.stringify(String(value ?? '')));
+        }
 
         // 格式化时间（Node.js版本不需要减8小时，直接使用本地时间）
         function formatDateTime(date) {
@@ -283,6 +319,13 @@
                 reminders.sort((a, b) => new Date(a.remind_time) - new Date(b.remind_time));
 
                 reminders.forEach(reminder => {
+                    const safeCycleType = ['once', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly'].includes(reminder.cycle_type)
+                        ? reminder.cycle_type
+                        : 'once';
+                    const safeTitle = escapeHTML(reminder.title);
+                    const safeContent = escapeHTML(reminder.content);
+                    const safeLink = escapeAttr(safeReminderLink(reminder.link));
+                    const safeId = jsString(reminder.id);
                     const cycleText = {
                         'once': '单次提醒',
                         'weekly': '每周循环',
@@ -290,39 +333,39 @@
                         'quarterly': '每3个月循环',
                         'half_yearly': '每6个月循环',
                         'yearly': '每年循环'
-                    }[reminder.cycle_type] || '单次提醒';
+                    }[safeCycleType] || '单次提醒';
 
                     let nextRemindTime = null;
-                    if (reminder.cycle_type !== 'once') {
+                    if (safeCycleType !== 'once') {
                         nextRemindTime = new Date(reminder.remind_time);
                     }
 
                     const reminderElement = document.createElement('div');
-                    reminderElement.className = `card-container theme-${reminder.cycle_type}`;
+                    reminderElement.className = `card-container theme-${safeCycleType}`;
                     reminderElement.innerHTML = `
                         <div class="dashed-border"></div>
                         <div class="reminder-card">
                             <div class="card-header">
                                 <div class="card-title">
-                                    <div class="type-icon ${reminder.cycle_type}">
-                                        ${reminder.cycle_type === 'once' ? `
+                                    <div class="type-icon ${safeCycleType}">
+                                        ${safeCycleType === 'once' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"/>
                                                 <path d="M686.7 638.6L544.1 535.5V288c0-4.4-3.6-8-8-8H488c-4.4 0-8 3.6-8 8v275.4c0 2.6 1.2 5 3.3 6.5l165.4 120.6c3.6 2.6 8.6 1.8 11.2-1.7l28.6-39c2.6-3.7 1.8-8.7-1.8-11.2z"/>
                                             </svg>
-                                        ` : reminder.cycle_type === 'weekly' ? `
+                                        ` : safeCycleType === 'weekly' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M112 880c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V460H112v420zm768-696H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v176h800V216c0-17.7-14.3-32-32-32z"/>
                                             </svg>
-                                        ` : reminder.cycle_type === 'monthly' ? `
+                                        ` : safeCycleType === 'monthly' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M512 832c-176.448 0-320-143.552-320-320S335.552 192 512 192c23.232 0 45.888 2.56 67.84 7.232a2.4832 2.4832 0 0 1 1.984 2.816 3.3792 3.3792 0 0 1-.512 1.408C560.512 242.688 548.288 287.744 548.288 336c0 189.632 153.088 343.36 341.952 345.088 1.088.064 2.048.768 2.56 1.792s.448 2.24-.256 3.136C815.36 772.672 670.784 832 512 832z"/>
                                             </svg>
-                                        ` : reminder.cycle_type === 'quarterly' ? `
+                                        ` : safeCycleType === 'quarterly' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zM320 560h128v72H320v-72zm160 0h128v72H480v-72zm160 0h128v72H640v-72z"/>
                                             </svg>
-                                        ` : reminder.cycle_type === 'half_yearly' ? `
+                                        ` : safeCycleType === 'half_yearly' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zM344 640h144v72H344v-72zm192 0h144v72H536v-72z"/>
                                             </svg>
@@ -332,14 +375,14 @@
                                             </svg>
                                         `}
                                     </div>
-                                    <h3>${reminder.title}</h3>
+                                    <h3>${safeTitle}</h3>
                                 </div>
                                 <span class="status ${reminder.status === 0 ? 'pending' : 'completed'}">
                                     ${reminder.status === 0 ? '待提醒' : '已提醒'}
                                 </span>
                             </div>
                             <div class="card-content">
-                                <p class="content-text">${reminder.content}</p>
+                                <p class="content-text">${safeContent}</p>
                                 <p class="time-text">
                                     <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
                                         <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"/>
@@ -354,7 +397,7 @@
                                     </svg>
                                     下次提醒: ${formatDateTime(nextRemindTime)}
                                 </p>
-                                ` : reminder.cycle_type === 'once' ? `
+                                ` : safeCycleType === 'once' ? `
                                 <p class="time-text next-remind disabled">单次提醒无下次提醒</p>
                                 ` : `
                                 <p class="time-text next-remind waiting">等待第一次提醒后显示下次时间</p>
@@ -367,14 +410,14 @@
                                 </p>
                             </div>
                             <div class="card-actions">
-                                <a href="${reminder.link}" class="link-btn" target="_blank" rel="noopener noreferrer">
+                                <a href="${safeLink}" class="link-btn" target="_blank" rel="noopener noreferrer">
                                     <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
                                         <path d="M853.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667v256a42.666667 42.666667 0 0 1-42.666667 42.666667H256a42.666667 42.666667 0 0 1-42.666667-42.666667V256a42.666667 42.666667 0 0 1 42.666667-42.666667h256a42.666667 42.666667 0 0 0 0-85.333333H256a128 128 0 0 0-128 128v512a128 128 0 0 0 128 128h512a128 128 0 0 0 128-128v-256a42.666667 42.666667 0 0 0-42.666667-42.666667z"/>
                                         <path d="M682.666667 213.333333h67.413333l-268.373333 267.946667a42.666667 42.666667 0 0 0 0 60.586667 42.666667 42.666667 0 0 0 60.586666 0L810.666667 273.92V341.333333a42.666667 42.666667 0 0 0 85.333333 0V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667h-170.666666a42.666667 42.666667 0 0 0 0 85.333333z"/>
                                     </svg>
                                     直达链接
                                 </a>
-                                <button class="delete-btn" onclick="deleteReminder('${reminder.id}')">
+                                <button class="delete-btn" onclick="deleteReminder(${safeId})">
                                     <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
                                         <path d="M360 184h-8c4.4 0 8-3.6 8-8v8h304v-8c0 4.4 3.6 8 8 8h-8v72h72v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80h72v-72z"/>
                                         <path d="M864 256H160c-17.7 0-32 14.3-32 32v32c0 4.4 3.6 8 8 8h60.4l24.7 523c1.6 34.1 29.8 61 63.9 61h454c34.2 0 62.3-26.8 63.9-61l24.7-523H888c4.4 0 8-3.6 8-8v-32c0-17.7-14.3-32-32-32zM731.3 840H292.7l-24.2-512h487l-24.2 512z"/>
@@ -410,7 +453,6 @@
         }
 
         document.getElementById('reminderForm').addEventListener('submit', addReminder);
-        loadReminders();
 
         // 设置最小时间
         const remindTimeInput = document.getElementById('remindTime');
@@ -430,10 +472,7 @@
                 if (response.ok) {
                     document.getElementById('password-overlay').style.display = 'none';
                     document.body.classList.remove('locked');
-                    // 存密码hash到cookie用于后续校验
-                    const expiryDate = new Date();
-                    expiryDate.setDate(expiryDate.getDate() + 30);
-                    document.cookie = `auth_pwd=${btoa(password)}; expires=${expiryDate.toUTCString()}; path=/`;
+                    loadRemindersOnce();
                 } else {
                     alert('密码错误');
                 }
@@ -451,43 +490,16 @@
         window.onload = async function () {
             // 先检测是否需要密码
             try {
-                // 尝试用空密码，看是否无需密码
-                const checkRes = await fetch('/api/verify-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: '' })
-                });
+                const checkRes = await fetch('/api/verify-password/status');
                 const checkData = await checkRes.json();
-                if (checkData.success) {
-                    // 无需密码
+                if (!checkData.protected || checkData.authenticated) {
                     document.getElementById('password-overlay').style.display = 'none';
                     document.body.classList.remove('locked');
+                    loadRemindersOnce();
                     return;
                 }
             } catch (e) {}
 
-            // 需要密码，检查cookie中存的密码是否还有效
-            const cookies = document.cookie.split(';').map(c => c.trim());
-            const authCookie = cookies.find(c => c.startsWith('auth_pwd='));
-            if (authCookie) {
-                const savedPwd = atob(authCookie.split('=')[1]);
-                try {
-                    const res = await fetch('/api/verify-password', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ password: savedPwd })
-                    });
-                    if (res.ok) {
-                        document.getElementById('password-overlay').style.display = 'none';
-                        document.body.classList.remove('locked');
-                        return;
-                    }
-                } catch (e) {}
-            }
-
-            // 清除旧cookie，显示密码输入
-            document.cookie = 'auth=true; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-            document.cookie = 'auth_pwd=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
             document.getElementById('password-overlay').style.display = 'flex';
             document.body.classList.add('locked');
         }
