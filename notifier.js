@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const db = require('./db');
+const { getCycleText } = require('./cycles');
 
 function getChannelConfig(channelType) {
     const ch = db.get('SELECT * FROM notify_channels WHERE channel_type = ? AND enabled = 1', [channelType]);
@@ -9,7 +10,7 @@ function getChannelConfig(channelType) {
 
 function buildMessage(reminder) {
     const displayTime = new Date(reminder.remind_time);
-    const cycleText = { 'once': '单次提醒', 'weekly': '每周循环', 'monthly': '每月循环', 'yearly': '每年循环' }[reminder.cycle_type] || '单次提醒';
+    const cycleText = getCycleText(reminder.cycle_type);
     const linkText = reminder.link ? `\n\n🔗 链接：${reminder.link}` : '';
     return `🔔 提醒：${reminder.title}\n\n${reminder.content}\n\n⏰ 提醒时间：${displayTime.toLocaleString('zh-CN')}\n\n📅 循环类型：${cycleText}${linkText}`;
 }

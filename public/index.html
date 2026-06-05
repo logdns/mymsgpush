@@ -76,6 +76,8 @@
                             <option value="once">单次提醒</option>
                             <option value="weekly">每周循环</option>
                             <option value="monthly">每月循环</option>
+                            <option value="quarterly">每3个月循环</option>
+                            <option value="half_yearly">每6个月循环</option>
                             <option value="yearly">每年循环</option>
                         </select>
                     </div>
@@ -280,6 +282,8 @@
                         'once': '单次提醒',
                         'weekly': '每周循环',
                         'monthly': '每月循环',
+                        'quarterly': '每3个月循环',
+                        'half_yearly': '每6个月循环',
                         'yearly': '每年循环'
                     }[reminder.cycle_type] || '单次提醒';
 
@@ -308,6 +312,14 @@
                                         ` : reminder.cycle_type === 'monthly' ? `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">
                                                 <path d="M512 832c-176.448 0-320-143.552-320-320S335.552 192 512 192c23.232 0 45.888 2.56 67.84 7.232a2.4832 2.4832 0 0 1 1.984 2.816 3.3792 3.3792 0 0 1-.512 1.408C560.512 242.688 548.288 287.744 548.288 336c0 189.632 153.088 343.36 341.952 345.088 1.088.064 2.048.768 2.56 1.792s.448 2.24-.256 3.136C815.36 772.672 670.784 832 512 832z"/>
+                                            </svg>
+                                        ` : reminder.cycle_type === 'quarterly' ? `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zM320 560h128v72H320v-72zm160 0h128v72H480v-72zm160 0h128v72H640v-72z"/>
+                                            </svg>
+                                        ` : reminder.cycle_type === 'half_yearly' ? `
+                                            <svg viewBox="0 0 1024 1024" width="20" height="20">
+                                                <path d="M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zM344 640h144v72H344v-72zm192 0h144v72H536v-72z"/>
                                             </svg>
                                         ` : `
                                             <svg viewBox="0 0 1024 1024" width="20" height="20">

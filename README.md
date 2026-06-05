@@ -7,11 +7,13 @@
 ## ✨ 功能特性
 
 - 📋 **提醒管理** — 卡片式前台 + 管理后台，支持增删改查
-- 🔁 **循环提醒** — 单次 / 每周 / 每月 / 每年
+- 🔁 **循环提醒** — 单次 / 每周 / 每月 / 每3个月 / 每6个月 / 每年
 - ⏱️ **自动推送** — 内置 `node-cron` 每分钟检查，到期自动推送
 - 📡 **6种通知渠道** — Telegram / 企业微信 / Bark / 飞书 / 钉钉 / 自定义Webhook
-- 🔐 **前台密码保护** — 可在后台设置前台访问密码
-- 🛡️ **管理后台** — 暗色主题后台，统计 / 渠道配置 / 通知日志 / 测试发送
+- 🔐 **安全设置** — 前台访问密码、管理员账户和管理员密码管理
+- 🛡️ **管理后台** — HeroUI 风格后台，统计 / 渠道配置 / 通知日志 / 测试发送
+- 📦 **数据迁移** — 后台 JSON 备份导出 / 合并导入 / 覆盖导入
+- ♻️ **在线更新** — 后台检查 Git 远端版本、执行更新并查看进度日志
 - 💾 **SQLite 持久化** — 使用 `sql.js`，无需编译，跨平台运行
 
 ## 🚀 快速部署
@@ -54,7 +56,53 @@ node server.js
 
 > ⚠️ **首次登录后请立即修改默认密码！**
 
+后台新管理员密码会使用 PBKDF2 哈希保存；旧版本明文密码在成功登录后会自动迁移。
+
 ## 🖥️ 生产环境部署
+
+## 🔄 旧版本升级与已有数据迁移
+
+旧版本如果没有后台导入/导出功能，请直接迁移数据库文件。项目数据默认在：
+
+```bash
+data/reminders.db
+```
+
+升级前先停服务并备份：
+
+```bash
+pm2 stop mymsgpush
+cp -a data data.backup.$(date +%Y%m%d-%H%M%S)
+```
+
+如果是在原目录升级：
+
+```bash
+git pull --ff-only
+npm install --omit=dev
+pm2 restart mymsgpush
+```
+
+如果是部署到新目录：
+
+```bash
+git clone https://github.com/logdns/mymsgpush.git mymsgpush-new
+cd mymsgpush-new
+npm install --omit=dev
+mkdir -p data
+cp /旧项目路径/data/reminders.db ./data/reminders.db
+pm2 start server.js --name mymsgpush
+```
+
+启动新版后会自动补齐缺失的数据表，不会清空已有提醒。旧版明文管理员密码会在第一次成功登录后自动迁移为 PBKDF2 哈希。
+
+新版后台提供 `设置 -> 数据备份与迁移`：
+
+- 导出备份 JSON：导出提醒、通知渠道、日志、设置和管理员账户。
+- 合并导入：重复主键会更新，未重复的数据会新增。
+- 覆盖导入：只覆盖备份文件中包含的数据表；如果备份里没有管理员账户，会保留当前登录账户，避免锁死后台。
+
+建议以后每次升级前先在后台导出 JSON，再保留一份 `data/reminders.db` 文件级备份。
 
 ### 使用 PM2 守护进程
 
@@ -200,6 +248,13 @@ mymsgpush/
 | DELETE | `/api/reminders/:id` | 删除提醒 |
 | POST | `/api/verify-password` | 验证前台密码 |
 | POST | `/api/notify/trigger` | 手动触发通知检查 |
+| GET | `/admin/data/export` | 后台导出数据备份 JSON |
+| POST | `/admin/data/import` | 后台导入数据备份 JSON |
+| GET | `/admin/update/check` | 后台检查远端更新 |
+| POST | `/admin/update/start` | 后台启动在线更新 |
+| GET | `/admin/update/status` | 读取更新进度日志 |
+
+> 在线更新会执行 `git fetch`、`git pull --ff-only`，依赖文件变化时执行 `npm install --omit=dev`。如果更新包含后端代码变更，需要重启 Node/PM2 进程后完全生效。
 
 ## 🙏 鸣谢
 

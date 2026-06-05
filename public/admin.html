@@ -8,16 +8,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0f0f1a; --bg-secondary: #1a1a2e; --bg-card: #16213e; --bg-hover: #1f2b47;
-            --text-primary: #e0e0e0; --text-secondary: #8892a4; --text-muted: #5a6478;
-            --accent: #4361ee; --accent-hover: #3a56d4; --success: #06d6a0; --warning: #ffd166; --danger: #ef476f;
-            --border: rgba(255,255,255,0.06); --shadow: 0 8px 32px rgba(0,0,0,0.4); --radius: 16px; --radius-sm: 8px;
+            --bg-primary: #f6f8fb; --bg-secondary: rgba(255,255,255,0.86); --bg-card: #ffffff; --bg-hover: #f1f5f9;
+            --text-primary: #111827; --text-secondary: #526070; --text-muted: #8a96a8;
+            --accent: #006fee; --accent-hover: #005bc4; --success: #17c964; --warning: #f5a524; --danger: #f31260;
+            --border: #e5e7eb; --shadow: 0 10px 30px rgba(15,23,42,0.08); --radius: 8px; --radius-sm: 8px;
         }
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;}
 
         /* Login */
-        .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0f1a 0%,#1a1a2e 50%,#16213e 100%);}
+        .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fbff 0%,#eef6ff 48%,#f7f3ff 100%);}
         .login-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:48px 40px;width:100%;max-width:420px;box-shadow:var(--shadow);text-align:center;}
         .login-card .logo-icon{font-size:56px;margin-bottom:16px;}
         .login-card h1{font-size:24px;font-weight:700;margin-bottom:8px;}
@@ -158,7 +158,7 @@
         .table-header{padding:20px 24px;border-bottom:1px solid var(--border);}
         .table-header h3{font-size:16px;font-weight:600;}
         table{width:100%;border-collapse:collapse;}
-        th{padding:14px 20px;text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);}
+        th{padding:14px 20px;text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:#f8fafc;}
         td{padding:14px 20px;font-size:14px;border-bottom:1px solid var(--border);color:var(--text-secondary);}
         tr:hover td{background:var(--bg-hover);}
         .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
@@ -169,6 +169,20 @@
         .admin-toast.show{transform:translateX(0);}
         .admin-toast.success{background:var(--success);color:#000;}
         .admin-toast.error{background:var(--danger);color:#fff;}
+        .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px;}
+        .settings-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+        .settings-card p{color:var(--text-secondary);font-size:13px;margin-bottom:16px;}
+        .settings-card input{width:100%;padding:12px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;margin-bottom:12px;outline:none;}
+        .settings-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,111,238,.12);}
+        .security-list{display:grid;gap:10px;margin-top:8px;}
+        .security-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-secondary);}
+        .security-row strong{color:var(--text-primary);font-weight:600;}
+        .update-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+        .update-pill{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--text-secondary);}
+        .update-pill strong{display:block;color:var(--text-primary);font-size:14px;margin-top:4px;}
+        .update-log{height:220px;overflow:auto;background:#0b1020;color:#d6e1ff;border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;margin-top:14px;}
+        .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+        .file-input{display:block;width:100%;padding:11px 12px;background:#f8fafc;border:1px dashed var(--border);border-radius:8px;color:var(--text-secondary);font-size:13px;margin-bottom:12px;}
 
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
         @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
@@ -212,7 +226,7 @@
                         <option value="">全部状态</option><option value="0">待提醒</option><option value="1">已完成</option>
                     </select>
                     <select class="filter-select" id="filterCycle" onchange="loadReminders()">
-                        <option value="">全部类型</option><option value="once">单次</option><option value="weekly">每周</option><option value="monthly">每月</option><option value="yearly">每年</option>
+                        <option value="">全部类型</option><option value="once">单次</option><option value="weekly">每周</option><option value="monthly">每月</option><option value="quarterly">每3个月</option><option value="half_yearly">每6个月</option><option value="yearly">每年</option>
                     </select>
                 </div>
             </div>
@@ -245,19 +259,60 @@
 
         <!-- Settings -->
         <div class="tab-content" id="tab-settings">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:24px;">
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
-                    <div class="section-title">🔐 前台访问密码</div>
-                    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">设置前台页面的访问密码，留空则不需要密码。</p>
-                    <input type="text" id="frontendPassword" placeholder="前台密码（留空=不需要密码）" style="width:100%;padding:12px 16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;margin-bottom:12px;outline:none;font-family:'Courier New',monospace;">
-                    <button onclick="saveFrontendPwd()" style="padding:10px 24px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">💾 保存前台密码</button>
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <div class="section-title">前台访问密码</div>
+                    <p>设置前台页面的访问密码，留空则不需要密码。</p>
+                    <input type="text" id="frontendPassword" placeholder="前台密码（留空=不需要密码）">
+                    <button class="form-btn primary" onclick="saveFrontendPwd()">保存前台密码</button>
                     <div id="frontPwdStatus" style="font-size:12px;margin-top:8px;color:var(--text-muted);"></div>
                 </div>
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
-                    <div class="section-title">🔑 修改管理员密码</div>
-                    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">修改后台管理员的登录密码。</p>
-                    <input type="password" id="newPassword" placeholder="输入新密码" style="width:100%;padding:12px 16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;margin-bottom:12px;outline:none;">
-                    <button onclick="changePassword()" style="padding:10px 24px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">💾 保存管理员密码</button>
+                <div class="settings-card">
+                    <div class="section-title">管理员账户</div>
+                    <p>修改后台登录账户。修改后会退出登录，请用新信息重新进入后台。</p>
+                    <input type="text" id="profileUsername" placeholder="管理员用户名">
+                    <input type="password" id="profileCurrentPassword" placeholder="当前密码">
+                    <button class="form-btn primary" onclick="saveProfile()">保存账户</button>
+                </div>
+                <div class="settings-card">
+                    <div class="section-title">修改管理员密码</div>
+                    <p>密码至少 8 位。为了防止误操作，需要输入当前密码。</p>
+                    <input type="password" id="currentPassword" placeholder="当前密码">
+                    <input type="password" id="newPassword" placeholder="新密码，至少 8 位">
+                    <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                    <button class="form-btn primary" onclick="changePassword()">保存管理员密码</button>
+                </div>
+                <div class="settings-card">
+                    <div class="section-title">安全状态</div>
+                    <p>用于快速确认默认账号、密码存储和前台保护状态。</p>
+                    <div class="security-list" id="securityStatus"></div>
+                </div>
+                <div class="settings-card" style="grid-column:1/-1;">
+                    <div class="section-title">数据备份与迁移</div>
+                    <p>导出当前提醒、通知渠道、日志、设置和管理员账户。导入支持合并或覆盖，适合跨机器迁移和升级前备份。</p>
+                    <div class="btn-row" style="margin-bottom:12px;">
+                        <button class="form-btn primary" onclick="exportData()">导出备份 JSON</button>
+                    </div>
+                    <input class="file-input" type="file" id="importFile" accept="application/json,.json">
+                    <div class="btn-row">
+                        <button class="form-btn secondary" onclick="importData('merge')">合并导入</button>
+                        <button class="form-btn secondary" onclick="importData('replace')">覆盖导入</button>
+                    </div>
+                    <div id="dataImportStatus" style="font-size:12px;margin-top:10px;color:var(--text-muted);">旧版本没有导出功能时，请直接保留或复制服务器上的 data/reminders.db。</div>
+                </div>
+                <div class="settings-card" style="grid-column:1/-1;">
+                    <div class="section-title">系统在线更新</div>
+                    <p>检查 Git 远端版本并在线拉取更新。更新后如涉及后端代码，请重启 Node/PM2 进程让新代码生效。</p>
+                    <div class="update-summary">
+                        <div class="update-pill">当前版本<strong id="updateCurrent">-</strong></div>
+                        <div class="update-pill">远端版本<strong id="updateRemote">-</strong></div>
+                        <div class="update-pill">状态<strong id="updateState">未检查</strong></div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="form-btn primary" onclick="checkUpdate()">检查更新</button>
+                        <button class="form-btn secondary" onclick="startUpdate()">开始更新</button>
+                    </div>
+                    <div class="update-log" id="updateLog">等待检查更新...</div>
                 </div>
             </div>
         </div>
@@ -272,7 +327,7 @@
             <input type="hidden" id="editId">
             <div class="form-row">
                 <div class="form-group"><label>🪪 项目名称</label><input type="text" id="addTitle" placeholder="提醒标题"></div>
-                <div class="form-group"><label>🔁 循环类型</label><select id="addCycleType"><option value="once">单次提醒</option><option value="weekly">每周循环</option><option value="monthly">每月循环</option><option value="yearly">每年循环</option></select></div>
+                <div class="form-group"><label>🔁 循环类型</label><select id="addCycleType"><option value="once">单次提醒</option><option value="weekly">每周循环</option><option value="monthly">每月循环</option><option value="quarterly">每3个月循环</option><option value="half_yearly">每6个月循环</option><option value="yearly">每年循环</option></select></div>
             </div>
             <div class="form-row full"><div class="form-group"><label>🔖 项目内容</label><textarea id="addContent" placeholder="提醒内容"></textarea></div></div>
             <div class="form-row full"><div class="form-group"><label>📌 链接地址（可选）</label><input type="url" id="addLink" placeholder="https://example.com"></div></div>
@@ -296,7 +351,8 @@
 
 <script>
 let authToken='';
-const CYCLE_TEXT={once:'单次提醒',weekly:'每周循环',monthly:'每月循环',yearly:'每年循环'};
+let updateTimer=null;
+const CYCLE_TEXT={once:'单次提醒',weekly:'每周循环',monthly:'每月循环',quarterly:'每3个月循环',half_yearly:'每6个月循环',yearly:'每年循环'};
 const CHANNEL_META={
     telegram:{icon:'✈️',name:'Telegram',fields:[{key:'bot_token',label:'Bot Token',placeholder:'123456:ABC-DEF...',type:'input'},{key:'chat_id',label:'Chat ID',placeholder:'你的 Chat ID',type:'input'}]},
     wecom:{icon:'💬',name:'企业微信',fields:[{key:'webhook_url',label:'Webhook URL',placeholder:'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...',type:'input'}]},
@@ -319,7 +375,7 @@ async function doLogin(){
     if(!u||!p){document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='请输入用户名和密码';return;}
     try{
         const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-        if(r.ok){authToken=btoa(`${u}:${p}`);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();}
+        if(r.ok){authToken=btoa(`${u}:${p}`);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;document.getElementById('profileUsername').value=u;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();}
         else{document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='用户名或密码错误';}
     }catch(e){toast('登录失败','error');}
 }
@@ -463,9 +519,35 @@ async function loadLogs(page=1){
     document.getElementById('logsPagination').innerHTML=`<span>共${d.total}条 第${d.page}/${tp}页</span><div style="display:flex;gap:8px;"><button class="page-btn" ${d.page<=1?'disabled':''} onclick="loadLogs(${d.page-1})">上一页</button><button class="page-btn" ${d.page>=tp?'disabled':''} onclick="loadLogs(${d.page+1})">下一页</button></div>`;}catch(e){toast('加载日志失败','error');}
 }
 async function changePassword(){
-    const p=document.getElementById('newPassword').value;if(!p||p.length<4){toast('密码至少4位','error');return;}
-    const r=await fetch('/admin/change-password',{method:'PUT',headers:H(),body:JSON.stringify({newPassword:p})});
-    if(r.ok){toast('管理员密码修改成功');setTimeout(doLogout,2000);}else toast('修改失败','error');
+    const currentPassword=document.getElementById('currentPassword').value;
+    const newPassword=document.getElementById('newPassword').value;
+    const confirmPassword=document.getElementById('confirmPassword').value;
+    if(!currentPassword){toast('请输入当前密码','error');return;}
+    if(!newPassword||newPassword.length<8){toast('新密码至少8位','error');return;}
+    if(newPassword!==confirmPassword){toast('两次新密码不一致','error');return;}
+    const r=await fetch('/admin/change-password',{method:'PUT',headers:H(),body:JSON.stringify({currentPassword,newPassword})});
+    if(r.ok){toast('管理员密码修改成功');setTimeout(doLogout,1200);}else{const d=await r.json().catch(()=>({}));toast(d.error||'修改失败','error');}
+}
+
+async function loadSecurity(){
+    try{
+        const d=await(await fetch('/admin/security',{headers:H()})).json();
+        document.getElementById('profileUsername').value=d.username||'';
+        document.getElementById('securityStatus').innerHTML=`
+            <div class="security-row"><span>管理员用户名</span><strong>${d.username||'-'}</strong></div>
+            <div class="security-row"><span>管理员密码存储</span><strong>${d.passwordHashed?'已加密':'待迁移'}</strong></div>
+            <div class="security-row"><span>前台访问保护</span><strong>${d.frontendPasswordEnabled?'已开启':'未开启'}</strong></div>
+            <div class="security-row"><span>默认用户名</span><strong>${d.defaultsChanged?'已修改':'仍为 admin'}</strong></div>`;
+    }catch(e){}
+}
+
+async function saveProfile(){
+    const username=document.getElementById('profileUsername').value.trim();
+    const currentPassword=document.getElementById('profileCurrentPassword').value;
+    if(username.length<3){toast('用户名至少3位','error');return;}
+    if(!currentPassword){toast('请输入当前密码','error');return;}
+    const r=await fetch('/admin/profile',{method:'PUT',headers:H(),body:JSON.stringify({username,currentPassword})});
+    if(r.ok){toast('账户已更新，请重新登录');setTimeout(doLogout,1200);}else{const d=await r.json().catch(()=>({}));toast(d.error||'保存失败','error');}
 }
 
 // Frontend password
@@ -479,7 +561,87 @@ async function saveFrontendPwd(){
     const p=document.getElementById('frontendPassword').value;
     const r=await fetch('/admin/frontend-password',{method:'PUT',headers:H(),body:JSON.stringify({password:p})});
     if(r.ok){toast('前台密码已保存！');document.getElementById('frontPwdStatus').textContent=p?`当前密码: ${p}`:'当前无密码（直接访问）';
+    loadSecurity();
     }else toast('保存失败','error');
+}
+
+async function exportData(){
+    try{
+        const r=await fetch('/admin/data/export',{headers:{Authorization:`Basic ${authToken}`}});
+        if(!r.ok){const d=await r.json().catch(()=>({}));toast(d.error||'导出失败','error');return;}
+        const blob=await r.blob();
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download=`mymsgpush-backup-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast('备份已导出');
+    }catch(e){toast('导出失败','error');}
+}
+
+async function importData(mode){
+    const file=document.getElementById('importFile').files[0];
+    if(!file){toast('请先选择备份 JSON 文件','error');return;}
+    if(mode==='replace'&&!confirm('覆盖导入会替换备份文件中包含的数据表，确定继续？'))return;
+
+    try{
+        const text=await file.text();
+        const data=JSON.parse(text);
+        const r=await fetch('/admin/data/import',{method:'POST',headers:H(),body:JSON.stringify({mode,data})});
+        const result=await r.json().catch(()=>({}));
+        if(!r.ok){toast(result.error||'导入失败','error');return;}
+
+        const imported=result.imported||{};
+        document.getElementById('dataImportStatus').textContent=`导入完成：提醒 ${imported.reminders||0} 条，渠道 ${imported.notify_channels||0} 条，日志 ${imported.notification_logs||0} 条。`;
+        toast('数据导入完成');
+        loadReminders();
+        loadStats();
+        loadChannels();
+        loadLogs();
+        loadFrontendPwd();
+        loadSecurity();
+    }catch(e){toast('导入文件解析失败','error');}
+}
+
+function renderUpdate(d){
+    if(!d)return;
+    document.getElementById('updateCurrent').textContent=d.current||'-';
+    document.getElementById('updateRemote').textContent=d.remote||'-';
+    document.getElementById('updateState').textContent=d.running?'更新中':(d.lastError?'更新失败':(d.hasUpdate?'有新版本':'已是最新'));
+    document.getElementById('updateLog').textContent=(d.logs&&d.logs.length)?d.logs.join('\n'):'暂无日志';
+    const box=document.getElementById('updateLog');
+    box.scrollTop=box.scrollHeight;
+}
+async function checkUpdate(){
+    try{
+        document.getElementById('updateState').textContent='检查中';
+        const d=await(await fetch('/admin/update/check',{headers:H()})).json();
+        if(d.error){toast(d.error,'error');}
+        renderUpdate(d);
+        toast(d.hasUpdate?'发现新版本':'当前已是最新');
+    }catch(e){toast('检查更新失败','error');}
+}
+async function pollUpdate(){
+    try{
+        const d=await(await fetch('/admin/update/status',{headers:H()})).json();
+        renderUpdate(d);
+        if(!d.running&&updateTimer){clearInterval(updateTimer);updateTimer=null;}
+    }catch(e){}
+}
+async function startUpdate(){
+    if(!confirm('确定开始在线更新？更新期间请不要关闭服务。'))return;
+    try{
+        const r=await fetch('/admin/update/start',{method:'POST',headers:H()});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok){toast(d.error||'启动更新失败','error');return;}
+        toast('更新任务已启动');
+        pollUpdate();
+        if(updateTimer)clearInterval(updateTimer);
+        updateTimer=setInterval(pollUpdate,1500);
+    }catch(e){toast('启动更新失败','error');}
 }
 </script>
 </body>

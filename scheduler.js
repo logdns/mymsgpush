@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const db = require('./db');
 const { sendNotifications } = require('./notifier');
+const { calculateNextRemindTime } = require('./cycles');
 
 let cronJob = null;
 
@@ -47,31 +48,6 @@ function start() {
 
 function stop() {
     if (cronJob) { cronJob.stop(); console.log('⏱️  定时任务调度器已停止'); }
-}
-
-function calculateNextRemindTime(currentTimeStr, cycleType) {
-    const date = new Date(currentTimeStr);
-    switch (cycleType) {
-        case 'weekly': return new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-        case 'monthly': {
-            const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
-            const h = date.getHours(), mi = date.getMinutes(), s = date.getSeconds();
-            let n = new Date(y, m + 1, d, h, mi, s);
-            if (n.getMonth() !== (m + 1) % 12) n = new Date(y, m + 2, 0, h, mi, s);
-            return n;
-        }
-        case 'yearly': {
-            const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
-            const h = date.getHours(), mi = date.getMinutes(), s = date.getSeconds();
-            let n = new Date(y + 1, m, d, h, mi, s);
-            if (m === 1 && d === 29) {
-                const ny = y + 1;
-                if (!((ny % 4 === 0 && ny % 100 !== 0) || ny % 400 === 0)) n = new Date(ny, 1, 28, h, mi, s);
-            }
-            return n;
-        }
-        default: return null;
-    }
 }
 
 module.exports = { start, stop };

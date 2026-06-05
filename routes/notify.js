@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { sendNotifications } = require('../notifier');
+const { calculateNextRemindTime } = require('../cycles');
 
 // POST /api/notify/trigger - 手动触发通知检查
 router.post('/trigger', async (req, res) => {
@@ -27,6 +28,11 @@ router.post('/trigger', async (req, res) => {
             }
             if (reminder.cycle_type === 'once') {
                 db.run('UPDATE reminders SET status = 1 WHERE id = ?', [reminder.id]);
+            } else {
+                const nextTime = calculateNextRemindTime(reminder.remind_time, reminder.cycle_type);
+                if (nextTime) {
+                    db.run('UPDATE reminders SET remind_time = ?, status = 0 WHERE id = ?', [nextTime.toISOString(), reminder.id]);
+                }
             }
             sent++;
         }

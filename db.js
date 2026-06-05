@@ -1,6 +1,7 @@
 const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
+const { hashPassword } = require('./security');
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -106,7 +107,7 @@ async function initDB() {
     // 插入默认管理员
     const adminCount = get('SELECT COUNT(*) as count FROM admin_users');
     if (adminCount.count === 0) {
-        db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', ['admin', 'admin123']);
+        db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', ['admin', hashPassword('admin123')]);
         console.log('📌 默认管理员账号: admin / admin123');
     }
 

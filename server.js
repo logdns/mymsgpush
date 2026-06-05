@@ -16,8 +16,8 @@ async function startServer() {
     const PORT = process.env.PORT || 3009;
 
     app.use(cors());
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
+    app.use(express.json({ limit: '20mb' }));
+    app.use(express.urlencoded({ extended: true, limit: '20mb' }));
     app.use(express.static(path.join(__dirname, 'public')));
 
     // API 路由
