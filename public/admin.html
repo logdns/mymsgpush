@@ -608,8 +608,12 @@ async function importData(mode){
 
 function renderUpdate(d){
     if(!d)return;
-    document.getElementById('updateCurrent').textContent=d.current||'-';
-    document.getElementById('updateRemote').textContent=d.remote||'-';
+    const currentLabel=d.currentVersion?`Release ${d.currentVersion}`:(d.current||'-');
+    const remoteLabel=d.remoteVersion?`Release ${d.remoteVersion}`:(d.remote||'-');
+    document.getElementById('updateCurrent').textContent=currentLabel;
+    document.getElementById('updateCurrent').title=d.current||'';
+    document.getElementById('updateRemote').textContent=remoteLabel;
+    document.getElementById('updateRemote').title=d.remote||'';
     document.getElementById('updateState').textContent=d.running?'更新中':(d.lastError?'更新失败':(d.hasUpdate?'有新版本':'已是最新'));
     document.getElementById('updateLog').textContent=(d.logs&&d.logs.length)?d.logs.join('\n'):'暂无日志';
     const box=document.getElementById('updateLog');

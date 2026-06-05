@@ -20,7 +20,10 @@ const updateState = {
     checkedAt: null,
     current: null,
     remote: null,
+    currentVersion: null,
+    remoteVersion: null,
     hasUpdate: false,
+    localDirty: false,
     logs: [],
     lastError: null
 };
@@ -62,7 +65,9 @@ function insertRows(table, rows) {
     return count;
 }
 
-function runCommand(command, args) {
+function runCommand(command, args, options = {}) {
+    const { logOutput = true } = options;
+
     return new Promise((resolve, reject) => {
         const child = spawn(command, args, { cwd: repoRoot, shell: false });
         let output = '';
@@ -70,13 +75,13 @@ function runCommand(command, args) {
         child.stdout.on('data', (data) => {
             const text = data.toString();
             output += text;
-            text.split(/\r?\n/).filter(Boolean).forEach(line => pushUpdateLog(line));
+            if (logOutput) text.split(/\r?\n/).filter(Boolean).forEach(line => pushUpdateLog(line));
         });
 
         child.stderr.on('data', (data) => {
             const text = data.toString();
             output += text;
-            text.split(/\r?\n/).filter(Boolean).forEach(line => pushUpdateLog(line));
+            if (logOutput) text.split(/\r?\n/).filter(Boolean).forEach(line => pushUpdateLog(line));
         });
 
         child.on('error', reject);
@@ -88,18 +93,48 @@ function runCommand(command, args) {
 }
 
 async function getGitCommit(ref) {
-    const output = await runCommand('git', ['rev-parse', '--short', ref]);
+    const output = await runCommand('git', ['rev-parse', '--short', ref], { logOutput: false });
     return output.split(/\r?\n/).pop();
+}
+
+async function getVersionLabel(ref) {
+    try {
+        const tag = await runCommand('git', ['describe', '--tags', '--exact-match', ref], { logOutput: false });
+        if (tag.trim()) return tag.trim();
+    } catch {}
+
+    try {
+        const pkg = await runCommand('git', ['show', `${ref}:package.json`], { logOutput: false });
+        const parsed = JSON.parse(pkg);
+        if (parsed.version) return `v${parsed.version}`;
+    } catch {}
+
+    return getGitCommit(ref);
+}
+
+async function hasLocalChanges() {
+    const status = await runCommand('git', ['status', '--porcelain', '--untracked-files=all'], { logOutput: false });
+    return status.trim().length > 0;
+}
+
+async function stashLocalChangesIfNeeded() {
+    if (!(await hasLocalChanges())) return false;
+
+    const stashName = `mymsgpush-auto-update-backup-${new Date().toISOString()}`;
+    pushUpdateLog('检测到本地文件改动，先备份到 Git stash 后继续更新。');
+    await runCommand('git', ['stash', 'push', '--include-untracked', '-m', stashName, '--', '.', ':(exclude)data']);
+    pushUpdateLog(`本地改动已备份：${stashName}`);
+    return true;
 }
 
 async function getRemoteRef() {
     try {
-        await runCommand('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+        await runCommand('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], { logOutput: false });
         return '@{u}';
     } catch {
-        const branch = (await runCommand('git', ['branch', '--show-current'])).trim() || 'main';
+        const branch = (await runCommand('git', ['branch', '--show-current'], { logOutput: false })).trim() || 'main';
         try {
-            await runCommand('git', ['rev-parse', '--verify', `origin/${branch}`]);
+            await runCommand('git', ['rev-parse', '--verify', `origin/${branch}`], { logOutput: false });
             return `origin/${branch}`;
         } catch {
             return 'origin/main';
@@ -110,11 +145,14 @@ async function getRemoteRef() {
 async function getRemoteSummary() {
     updateState.logs = [];
     pushUpdateLog('开始检查远端版本...');
-    await runCommand('git', ['fetch', '--prune']);
+    await runCommand('git', ['fetch', '--tags', '--prune']);
 
     const remoteRef = await getRemoteRef();
     const current = await getGitCommit('HEAD');
     const remote = await getGitCommit(remoteRef);
+    const currentVersion = await getVersionLabel('HEAD');
+    const remoteVersion = await getVersionLabel(remoteRef);
+    const localDirty = await hasLocalChanges();
     let changelog = '';
     try {
         changelog = await runCommand('git', ['log', '--oneline', '--decorate', `HEAD..${remoteRef}`]);
@@ -125,11 +163,15 @@ async function getRemoteSummary() {
     updateState.checkedAt = new Date().toISOString();
     updateState.current = current;
     updateState.remote = remote;
+    updateState.currentVersion = currentVersion;
+    updateState.remoteVersion = remoteVersion;
     updateState.hasUpdate = current !== remote;
+    updateState.localDirty = localDirty;
     updateState.lastError = null;
-    pushUpdateLog(updateState.hasUpdate ? `发现新版本：${current} -> ${remote}` : '当前已经是最新版本');
+    if (localDirty) pushUpdateLog('检测到本地文件改动，点击更新时会先自动备份到 Git stash。');
+    pushUpdateLog(updateState.hasUpdate ? `发现新版本：${currentVersion} (${current}) -> ${remoteVersion} (${remote})` : '当前已经是最新版本');
 
-    return { current, remote, hasUpdate: updateState.hasUpdate, changelog };
+    return { current, remote, currentVersion, remoteVersion, hasUpdate: updateState.hasUpdate, localDirty, changelog };
 }
 
 function adminAuth(req, res, next) {
@@ -430,10 +472,13 @@ router.post('/update/start', adminAuth, async (req, res) => {
 
     (async () => {
         try {
-            await runCommand('git', ['fetch', '--prune']);
+            await runCommand('git', ['fetch', '--tags', '--prune']);
             const remoteRef = await getRemoteRef();
             updateState.current = await getGitCommit('HEAD');
             updateState.remote = await getGitCommit(remoteRef);
+            updateState.currentVersion = await getVersionLabel('HEAD');
+            updateState.remoteVersion = await getVersionLabel(remoteRef);
+            updateState.localDirty = await hasLocalChanges();
 
             if (updateState.current === updateState.remote) {
                 updateState.hasUpdate = false;
@@ -445,7 +490,9 @@ router.post('/update/start', adminAuth, async (req, res) => {
                 ? fs.readFileSync(path.join(repoRoot, 'package-lock.json'), 'utf8')
                 : '';
 
-            pushUpdateLog(`执行 git pull：${updateState.current} -> ${updateState.remote}`);
+            await stashLocalChangesIfNeeded();
+
+            pushUpdateLog(`执行 git pull：${updateState.currentVersion} (${updateState.current}) -> ${updateState.remoteVersion} (${updateState.remote})`);
             if (remoteRef.startsWith('origin/')) {
                 await runCommand('git', ['pull', '--ff-only', 'origin', remoteRef.replace('origin/', '')]);
             } else {
@@ -462,6 +509,8 @@ router.post('/update/start', adminAuth, async (req, res) => {
             }
 
             updateState.current = await getGitCommit('HEAD');
+            updateState.currentVersion = await getVersionLabel('HEAD');
+            updateState.localDirty = await hasLocalChanges();
             updateState.hasUpdate = false;
             pushUpdateLog('更新完成。若服务端代码已变化，请重启 Node/PM2 进程让新后端代码生效。');
         } catch (error) {
@@ -480,7 +529,10 @@ router.get('/update/status', adminAuth, (req, res) => {
         checkedAt: updateState.checkedAt,
         current: updateState.current,
         remote: updateState.remote,
+        currentVersion: updateState.currentVersion,
+        remoteVersion: updateState.remoteVersion,
         hasUpdate: updateState.hasUpdate,
+        localDirty: updateState.localDirty,
         logs: updateState.logs,
         lastError: updateState.lastError
     });

@@ -255,6 +255,7 @@ mymsgpush/
 | GET | `/admin/update/status` | 读取更新进度日志 |
 
 > 在线更新会执行 `git fetch`、`git pull --ff-only`，依赖文件变化时执行 `npm install --omit=dev`。如果更新包含后端代码变更，需要重启 Node/PM2 进程后完全生效。
+> 如果服务器目录存在本地覆盖文件，在线更新会先把这些文件备份到 Git stash，再拉取远端版本；数据库目录 `data/` 不会被纳入备份或覆盖。
 
 ## 🙏 鸣谢
 
