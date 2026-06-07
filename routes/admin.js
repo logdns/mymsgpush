@@ -368,8 +368,31 @@ router.get('/stats', adminAuth, (req, res) => {
         const pending = db.get('SELECT COUNT(*) as count FROM reminders WHERE status = 0').count;
         const completed = db.get('SELECT COUNT(*) as count FROM reminders WHERE status = 1').count;
         const todayNotifications = db.get("SELECT COUNT(*) as count FROM notification_logs WHERE date(created_at) = date('now')").count;
-        const channelStats = db.all('SELECT platform, COUNT(*) as total, SUM(success) as success FROM notification_logs GROUP BY platform');
-        res.json({ reminders: { total, pending, completed }, todayNotifications, channelStats });
+        const overdue = db.get("SELECT COUNT(*) as count FROM reminders WHERE status = 0 AND datetime(remind_time) < datetime('now')").count;
+        const next7Days = db.get("SELECT COUNT(*) as count FROM reminders WHERE status = 0 AND datetime(remind_time) >= datetime('now') AND datetime(remind_time) < datetime('now', '+7 days')").count;
+        const cycleStats = db.all('SELECT cycle_type as cycle, COUNT(*) as total FROM reminders GROUP BY cycle_type ORDER BY total DESC');
+        const channelStats = db.all('SELECT platform, COUNT(*) as total, COALESCE(SUM(success), 0) as success FROM notification_logs GROUP BY platform ORDER BY total DESC');
+        const notificationTrend = [];
+
+        for (let i = 6; i >= 0; i--) {
+            const day = new Date();
+            day.setDate(day.getDate() - i);
+            const date = day.toISOString().slice(0, 10);
+            const row = db.get('SELECT COUNT(*) as total, COALESCE(SUM(success), 0) as success FROM notification_logs WHERE date(created_at) = date(?)', [date]);
+            notificationTrend.push({
+                date,
+                total: row ? Number(row.total) || 0 : 0,
+                success: row ? Number(row.success) || 0 : 0
+            });
+        }
+
+        res.json({
+            reminders: { total, pending, completed, overdue, next7Days },
+            todayNotifications,
+            channelStats,
+            cycleStats,
+            notificationTrend
+        });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

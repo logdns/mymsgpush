@@ -44,6 +44,7 @@
         /* Tabs */
         .tabs{display:flex;gap:4px;margin-bottom:32px;background:var(--bg-secondary);padding:4px;border-radius:var(--radius-sm);border:1px solid var(--border);width:fit-content;flex-wrap:wrap;}
         .tab-btn{padding:10px 20px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:14px;font-weight:500;border-radius:6px;transition:all .3s;}
+        .tab-link{display:inline-flex;align-items:center;text-decoration:none;}
         .tab-btn.active{background:var(--accent);color:white;}
         .tab-btn:hover:not(.active){background:var(--bg-hover);color:var(--text-primary);}
         .tab-content{display:none;}.tab-content.active{display:block;animation:fadeIn .3s ease;}
@@ -59,6 +60,30 @@
         .stat-card.green .stat-value{color:var(--success);}
         .stat-card.orange .stat-value{color:var(--warning);}
         .stat-card.red .stat-value{color:var(--danger);}
+        .overview-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start;}
+        .overview-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);min-width:0;}
+        .overview-card h3{font-size:16px;font-weight:700;margin-bottom:6px;}
+        .overview-card p{color:var(--text-secondary);font-size:13px;margin-bottom:20px;}
+        .trend-chart{height:220px;display:flex;align-items:end;gap:12px;padding-top:12px;border-bottom:1px solid var(--border);}
+        .trend-item{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px;}
+        .trend-bar-wrap{width:100%;height:170px;display:flex;align-items:end;justify-content:center;}
+        .trend-bar{width:min(34px,70%);min-height:4px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--accent),#06b6d4);position:relative;}
+        .trend-bar span{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--text-primary);}
+        .trend-label{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+        .overview-list{display:grid;gap:14px;}
+        .overview-row{display:grid;gap:8px;}
+        .overview-row-head{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--text-secondary);}
+        .overview-row-head strong{color:var(--text-primary);font-weight:700;}
+        .bar-track{height:8px;background:#eef2f7;border-radius:999px;overflow:hidden;}
+        .bar-fill{height:100%;border-radius:999px;background:var(--accent);}
+        .bar-fill.green{background:var(--success);}
+        .bar-fill.orange{background:var(--warning);}
+        .bar-fill.red{background:var(--danger);}
+        .channel-table{display:grid;gap:10px;}
+        .channel-stat-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+        .channel-stat-row:last-child{border-bottom:none;}
+        .channel-stat-name{font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .channel-stat-meta{color:var(--text-muted);font-size:12px;text-align:right;white-space:nowrap;}
 
         /* Reminder Cards */
         .reminder-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
@@ -169,13 +194,21 @@
         .admin-toast.show{transform:translateX(0);}
         .admin-toast.success{background:var(--success);color:#000;}
         .admin-toast.error{background:var(--danger);color:#fff;}
-        .settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start;}
+        .settings-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-areas:"security status" "backup backup" "webdav webdav" "update update";gap:20px;align-items:start;}
+        .settings-main{grid-area:security;display:grid;gap:20px;min-width:0;}
+        .settings-status-card{grid-area:status;}
+        .settings-backup-card{grid-area:backup;}
+        .settings-webdav-card{grid-area:webdav;}
+        .settings-update-card{grid-area:update;}
         .settings-card{min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
-        .settings-card p{color:var(--text-secondary);font-size:13px;margin-bottom:16px;}
+        .settings-card p{color:var(--text-secondary);font-size:13px;margin-bottom:18px;max-width:760px;}
         .settings-card input{width:100%;padding:12px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;margin-bottom:12px;outline:none;}
         .settings-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,111,238,.12);}
-        .account-security-card{grid-column:span 2;}
-        .account-security-layout{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:24px;margin-top:18px;}
+        .frontend-password-form{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;align-items:start;max-width:720px;}
+        .frontend-password-form input{margin-bottom:0;}
+        .frontend-password-form .form-btn{height:44px;white-space:nowrap;}
+        .settings-inline-status{font-size:12px;margin-top:10px;color:var(--text-muted);}
+        .account-security-layout{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:24px;margin-top:18px;}
         .account-section{min-width:0;display:flex;flex-direction:column;}
         .account-section+.account-section{border-left:1px solid var(--border);padding-left:24px;}
         .account-section-title{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px;}
@@ -206,8 +239,9 @@
         .admin-footer a:hover{text-decoration:underline;}
 
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-        @media(max-width:1180px){.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.account-security-card{grid-column:1/-1;}}
-        @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards,.settings-grid,.account-security-layout,.password-fields{grid-template-columns:1fr;}.account-security-card{grid-column:1/-1;}.account-section+.account-section{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:18px;}.account-actions .form-btn{width:100%;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}}
+        @media(max-width:1180px){.settings-grid{grid-template-columns:1fr;grid-template-areas:"security" "status" "backup" "webdav" "update";}.settings-status-card{max-width:none;}}
+        @media(max-width:980px){.overview-grid{grid-template-columns:1fr;}}
+        @media(max-width:768px){.main-content{padding:16px;}.topbar{padding:0 12px;}.stats-grid{grid-template-columns:1fr 1fr;}.channel-cards,.reminder-cards,.account-security-layout,.password-fields,.frontend-password-form{grid-template-columns:1fr;}.frontend-password-form .form-btn,.account-actions .form-btn{width:100%;}.account-section+.account-section{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:18px;}.form-row{grid-template-columns:1fr;}.modal-box{margin:0 16px;}.trend-chart{gap:8px;}.trend-bar{width:min(28px,80%);}.tab-btn{padding:9px 14px;}}
     </style>
 </head>
 <body>
@@ -236,6 +270,7 @@
             <button class="tab-btn" data-tab="channels" onclick="switchTab('channels')">📡 通知渠道</button>
             <button class="tab-btn" data-tab="logs" onclick="switchTab('logs')">📜 通知日志</button>
             <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 设置</button>
+            <a class="tab-btn tab-link" href="/" target="_blank" rel="noopener noreferrer">🏠 前台首页</a>
         </div>
 
         <!-- Reminders (card view) -->
@@ -259,6 +294,28 @@
         <!-- Overview -->
         <div class="tab-content" id="tab-overview">
             <div class="stats-grid" id="statsGrid"></div>
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <h3>近 7 天通知趋势</h3>
+                    <p>按通知发送日志统计每日发送量。</p>
+                    <div class="trend-chart" id="notificationTrend"></div>
+                </div>
+                <div class="overview-card">
+                    <h3>提醒状态</h3>
+                    <p>待提醒、已完成、已逾期和未来 7 天到期提醒。</p>
+                    <div class="overview-list" id="reminderStatusChart"></div>
+                </div>
+                <div class="overview-card">
+                    <h3>提醒类型分布</h3>
+                    <p>按循环类型统计提醒数量。</p>
+                    <div class="overview-list" id="cycleChart"></div>
+                </div>
+                <div class="overview-card">
+                    <h3>渠道发送统计</h3>
+                    <p>按通知渠道统计发送总数和成功率。</p>
+                    <div class="channel-table" id="channelStats"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Channels -->
@@ -295,61 +352,65 @@
         <!-- Settings -->
         <div class="tab-content" id="tab-settings">
             <div class="settings-grid">
-                <div class="settings-card">
-                    <div class="section-title">前台访问密码</div>
-                    <p>设置前台页面的访问密码，留空则不需要密码。</p>
-                    <input type="text" id="frontendPassword" placeholder="前台密码（留空=不需要密码）">
-                    <button class="form-btn primary" onclick="saveFrontendPwd()">保存前台密码</button>
-                    <div id="frontPwdStatus" style="font-size:12px;margin-top:8px;color:var(--text-muted);"></div>
-                </div>
-                <div class="settings-card account-security-card">
-                    <div class="section-title">管理员安全</div>
-                    <p>集中管理后台登录账户和管理员密码。保存任一项后会退出登录，请用新信息重新进入后台。</p>
-                    <div class="account-security-layout">
-                        <div class="account-section">
-                            <div class="account-section-title">登录账户</div>
-                            <div class="account-section-desc">修改后台登录用户名，需要输入当前管理员密码确认。</div>
-                            <div class="settings-field">
-                                <label for="profileUsername">管理员用户名</label>
-                                <input type="text" id="profileUsername" placeholder="管理员用户名">
-                            </div>
-                            <div class="settings-field">
-                                <label for="profileCurrentPassword">当前密码</label>
-                                <input type="password" id="profileCurrentPassword" placeholder="用于确认账户修改">
-                            </div>
-                            <div class="account-actions">
-                                <button class="form-btn primary" onclick="saveProfile()">保存账户</button>
-                            </div>
+                <div class="settings-main">
+                    <div class="settings-card">
+                        <div class="section-title">前台访问密码</div>
+                        <p>设置前台页面的访问密码，留空则不需要密码。</p>
+                        <div class="frontend-password-form">
+                            <input type="text" id="frontendPassword" placeholder="前台密码（留空=不需要密码）">
+                            <button class="form-btn primary" onclick="saveFrontendPwd()">保存前台密码</button>
                         </div>
-                        <div class="account-section">
-                            <div class="account-section-title">管理员密码</div>
-                            <div class="account-section-desc">新密码至少 8 位。为了防止误操作，需要先输入当前密码。</div>
-                            <div class="settings-field">
-                                <label for="currentPassword">当前密码</label>
-                                <input type="password" id="currentPassword" placeholder="当前管理员密码">
-                            </div>
-                            <div class="password-fields">
+                        <div id="frontPwdStatus" class="settings-inline-status"></div>
+                    </div>
+                    <div class="settings-card account-security-card">
+                        <div class="section-title">管理员安全</div>
+                        <p>集中管理后台登录账户和管理员密码。保存任一项后会退出登录，请用新信息重新进入后台。</p>
+                        <div class="account-security-layout">
+                            <div class="account-section">
+                                <div class="account-section-title">登录账户</div>
+                                <div class="account-section-desc">修改后台登录用户名，需要输入当前管理员密码确认。</div>
                                 <div class="settings-field">
-                                    <label for="newPassword">新密码</label>
-                                    <input type="password" id="newPassword" placeholder="至少 8 位">
+                                    <label for="profileUsername">管理员用户名</label>
+                                    <input type="text" id="profileUsername" placeholder="管理员用户名">
                                 </div>
                                 <div class="settings-field">
-                                    <label for="confirmPassword">确认新密码</label>
-                                    <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                                    <label for="profileCurrentPassword">当前密码</label>
+                                    <input type="password" id="profileCurrentPassword" placeholder="用于确认账户修改">
+                                </div>
+                                <div class="account-actions">
+                                    <button class="form-btn primary" onclick="saveProfile()">保存账户</button>
                                 </div>
                             </div>
-                            <div class="account-actions">
-                                <button class="form-btn primary" onclick="changePassword()">保存管理员密码</button>
+                            <div class="account-section">
+                                <div class="account-section-title">管理员密码</div>
+                                <div class="account-section-desc">新密码至少 8 位。为了防止误操作，需要先输入当前密码。</div>
+                                <div class="settings-field">
+                                    <label for="currentPassword">当前密码</label>
+                                    <input type="password" id="currentPassword" placeholder="当前管理员密码">
+                                </div>
+                                <div class="password-fields">
+                                    <div class="settings-field">
+                                        <label for="newPassword">新密码</label>
+                                        <input type="password" id="newPassword" placeholder="至少 8 位">
+                                    </div>
+                                    <div class="settings-field">
+                                        <label for="confirmPassword">确认新密码</label>
+                                        <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                                    </div>
+                                </div>
+                                <div class="account-actions">
+                                    <button class="form-btn primary" onclick="changePassword()">保存管理员密码</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="settings-card">
+                <div class="settings-card settings-status-card">
                     <div class="section-title">安全状态</div>
                     <p>用于快速确认默认账号、密码存储和前台保护状态。</p>
                     <div class="security-list" id="securityStatus"></div>
                 </div>
-                <div class="settings-card" style="grid-column:1/-1;">
+                <div class="settings-card settings-backup-card">
                     <div class="section-title">数据备份与迁移</div>
                     <p>导出当前提醒、通知渠道、日志、设置和管理员账户。导入支持合并或覆盖，适合跨机器迁移和升级前备份。</p>
                     <div class="btn-row" style="margin-bottom:12px;">
@@ -362,7 +423,7 @@
                     </div>
                     <div id="dataImportStatus" style="font-size:12px;margin-top:10px;color:var(--text-muted);">旧版本没有导出功能时，请直接保留或复制服务器上的 data/reminders.db。</div>
                 </div>
-                <div class="settings-card" style="grid-column:1/-1;">
+                <div class="settings-card settings-webdav-card">
                     <div class="section-title">WebDAV 备份与恢复</div>
                     <p>保存 WebDAV 设置后，可以把当前数据备份为 JSON，也可以从远端备份合并或覆盖恢复。</p>
                     <div class="form-row">
@@ -386,7 +447,7 @@
                     </div>
                     <div id="webdavStatus" style="font-size:12px;margin-top:10px;color:var(--text-muted);">未加载 WebDAV 设置。</div>
                 </div>
-                <div class="settings-card" style="grid-column:1/-1;">
+                <div class="settings-card settings-update-card">
                     <div class="section-title">系统在线更新</div>
                     <p>检查 Git 远端版本并在线拉取更新。更新后如涉及后端代码，请重启 Node/PM2 进程让新代码生效。</p>
                     <div class="update-summary">
@@ -478,13 +539,65 @@ function doLogout(){authToken='';document.getElementById('dashboard').style.disp
 function switchTab(t){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));document.getElementById(`tab-${t}`).classList.add('active');document.querySelector(`.tab-btn[data-tab="${t}"]`).classList.add('active');}
 
 // Stats
+function pct(value,total){return total>0?Math.round((Number(value)||0)*100/total):0;}
+function formatDay(dateText){
+    const d=new Date(`${dateText}T00:00:00`);
+    return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function renderProgressRows(el,rows){
+    el.innerHTML=rows.length?rows.map(row=>`
+        <div class="overview-row">
+            <div class="overview-row-head"><span>${esc(row.label)}</span><strong>${row.value}</strong></div>
+            <div class="bar-track"><div class="bar-fill ${row.color||''}" style="width:${Number(row.value)>0?Math.max(2,pct(row.value,row.total)):0}%;"></div></div>
+        </div>`).join(''):'<div class="no-data">暂无数据</div>';
+}
 async function loadStats(){
     try{const d=await(await fetch('/admin/stats',{headers:H()})).json();
+    const reminderTotal=Number(d.reminders.total)||0;
     document.getElementById('statsGrid').innerHTML=`
         <div class="stat-card blue"><div class="stat-icon">📋</div><div class="stat-value">${d.reminders.total}</div><div class="stat-label">总提醒数</div></div>
         <div class="stat-card orange"><div class="stat-icon">⏳</div><div class="stat-value">${d.reminders.pending}</div><div class="stat-label">待提醒</div></div>
         <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value">${d.reminders.completed}</div><div class="stat-label">已完成</div></div>
-        <div class="stat-card red"><div class="stat-icon">📮</div><div class="stat-value">${d.todayNotifications}</div><div class="stat-label">今日通知</div></div>`;}catch(e){toast('加载统计失败','error');}
+        <div class="stat-card red"><div class="stat-icon">📮</div><div class="stat-value">${d.todayNotifications}</div><div class="stat-label">今日通知</div></div>`;
+
+    const trend=d.notificationTrend||[];
+    const maxTrend=Math.max(...trend.map(item=>Number(item.total)||0),1);
+    document.getElementById('notificationTrend').innerHTML=trend.map(item=>{
+        const total=Number(item.total)||0;
+        const height=total>0?Math.max(4,Math.round(total*160/maxTrend)):0;
+        return `<div class="trend-item">
+            <div class="trend-bar-wrap"><div class="trend-bar" style="height:${height}px;"><span>${total}</span></div></div>
+            <div class="trend-label">${esc(formatDay(item.date))}</div>
+        </div>`;
+    }).join('')||'<div class="no-data">暂无通知日志</div>';
+
+    renderProgressRows(document.getElementById('reminderStatusChart'),[
+        {label:'待提醒',value:Number(d.reminders.pending)||0,total:reminderTotal,color:'orange'},
+        {label:'已完成',value:Number(d.reminders.completed)||0,total:reminderTotal,color:'green'},
+        {label:'已逾期',value:Number(d.reminders.overdue)||0,total:reminderTotal,color:'red'},
+        {label:'未来 7 天',value:Number(d.reminders.next7Days)||0,total:reminderTotal,color:''}
+    ]);
+
+    const cycleTotal=(d.cycleStats||[]).reduce((sum,item)=>sum+(Number(item.total)||0),0);
+    renderProgressRows(document.getElementById('cycleChart'),(d.cycleStats||[]).map(item=>({
+        label:CYCLE_TEXT[safeCycle(item.cycle)]||item.cycle,
+        value:Number(item.total)||0,
+        total:cycleTotal,
+        color:''
+    })));
+
+    document.getElementById('channelStats').innerHTML=(d.channelStats||[]).length?(d.channelStats||[]).map(item=>{
+        const total=Number(item.total)||0;
+        const success=Number(item.success)||0;
+        return `<div class="channel-stat-row">
+            <div>
+                <div class="channel-stat-name">${esc(item.platform||'-')}</div>
+                <div class="bar-track" style="margin-top:8px;"><div class="bar-fill green" style="width:${success>0?Math.max(2,pct(success,total)):0}%;"></div></div>
+            </div>
+            <div class="channel-stat-meta">${success}/${total}<br>${pct(success,total)}%</div>
+        </div>`;
+    }).join(''):'<div class="no-data">暂无渠道日志</div>';
+    }catch(e){toast('加载统计失败','error');}
 }
 
 // Reminders Card View
