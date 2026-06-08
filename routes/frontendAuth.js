@@ -10,6 +10,14 @@ function getFrontendPassword() {
     return setting ? setting.value : '';
 }
 
+function decodeCookiePart(value) {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+}
+
 function parseCookies(req) {
     return String(req.headers.cookie || '')
         .split(';')
@@ -18,8 +26,8 @@ function parseCookies(req) {
         .reduce((cookies, cookie) => {
             const separatorIndex = cookie.indexOf('=');
             if (separatorIndex < 0) return cookies;
-            const name = decodeURIComponent(cookie.slice(0, separatorIndex));
-            const value = decodeURIComponent(cookie.slice(separatorIndex + 1));
+            const name = decodeCookiePart(cookie.slice(0, separatorIndex));
+            const value = decodeCookiePart(cookie.slice(separatorIndex + 1));
             cookies[name] = value;
             return cookies;
         }, {});

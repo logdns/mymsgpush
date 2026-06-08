@@ -528,13 +528,19 @@ function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;'
 function jsString(value){return esc(JSON.stringify(String(value??'')));}
 function safeUrl(value){if(!value)return '';try{const url=new URL(value,window.location.origin);return ['http:','https:'].includes(url.protocol)?url.href:'';}catch{return '';}}
 function safeCycle(value){return Object.prototype.hasOwnProperty.call(CYCLE_TEXT,value)?value:'once';}
+function basicAuth(username,password){
+    const bytes=new TextEncoder().encode(`${username}:${password}`);
+    let binary='';
+    bytes.forEach(byte=>{binary+=String.fromCharCode(byte);});
+    return btoa(binary);
+}
 
 async function doLogin(){
     const u=document.getElementById('loginUsername').value,p=document.getElementById('loginPassword').value;
     if(!u||!p){document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='请输入用户名和密码';return;}
     try{
         const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-        if(r.ok){authToken=btoa(`${u}:${p}`);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;document.getElementById('profileUsername').value=u;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();loadWebdavConfig();}
+        if(r.ok){authToken=basicAuth(u,p);document.getElementById('loginPage').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('welcomeText').textContent=`欢迎, ${u}`;document.getElementById('profileUsername').value=u;loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();loadWebdavConfig();}
         else{document.getElementById('loginError').style.display='block';document.getElementById('loginError').textContent='用户名或密码错误';}
     }catch(e){toast('登录失败','error');}
 }
@@ -685,7 +691,7 @@ async function submitReminder(){
             const r=await fetch(`/admin/reminders/${id}`,{method:'PUT',headers:H(),body:JSON.stringify({title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link,status})});
             if(r.ok){toast('✅ 提醒修改成功！');closeAddModal();loadReminders();loadStats();}else toast('修改失败','error');
         }else{
-            const r=await fetch('/api/reminders',{method:'POST',headers:H(),body:JSON.stringify({id:Date.now().toString(),title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link})});
+            const r=await fetch('/api/reminders',{method:'POST',headers:H(),body:JSON.stringify({title,content,remind_time:new Date(rt).toISOString(),cycle_type:ct,link})});
             if(r.ok){toast('✅ 提醒添加成功！');closeAddModal();loadReminders();loadStats();}else toast('添加失败','error');
         }
     }catch(e){toast(editMode?'修改失败':'添加失败','error');}
@@ -711,13 +717,13 @@ async function loadChannels(){
     }).join('');}catch(e){toast('加载渠道失败','error');}
 }
 async function saveChannel(type){
-    const m=CHANNEL_META[type],en=document.getElementById(`toggle-${type}`).checked,cfg={};
+    const m=CHANNEL_META[type]||{name:type,fields:[]},en=document.getElementById(`toggle-${type}`).checked,cfg={};
     for(const f of m.fields){const el=document.getElementById(`cfg-${type}-${f.key}`);cfg[f.key]=el.value.trim();}
     await fetch(`/admin/channels/${type}`,{method:'PUT',headers:H(),body:JSON.stringify({enabled:en,config:cfg})});
     toast(`${m.name} 配置已保存！`);const s=document.getElementById(`status-${type}`);s.className='channel-status show ok';s.textContent='✅ 已保存';setTimeout(()=>s.classList.remove('show'),3000);
 }
 async function testChannel(type){
-    const m=CHANNEL_META[type],s=document.getElementById(`status-${type}`);
+    const m=CHANNEL_META[type]||{fields:[]},s=document.getElementById(`status-${type}`);
     s.className='channel-status show';s.style.background='rgba(67,97,238,0.1)';s.style.color='var(--accent)';s.textContent='⏳ 保存并测试中...';
     const en=document.getElementById(`toggle-${type}`).checked,cfg={};
     for(const f of m.fields){const el=document.getElementById(`cfg-${type}-${f.key}`);cfg[f.key]=el.value.trim();}

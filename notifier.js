@@ -58,7 +58,8 @@ async function sendSingleChannel(channelType, config, reminder) {
                     body: JSON.stringify({ msg_type: 'text', content: { text: msgBody } })
                 });
                 const r = await resp.json();
-                return { success: r.code === 0 || resp.ok, result: r, error: (r.code === 0 || resp.ok) ? null : (r.msg || '发送失败') };
+                const ok = Object.prototype.hasOwnProperty.call(r, 'code') ? r.code === 0 : resp.ok;
+                return { success: ok, result: r, error: ok ? null : (r.msg || '发送失败') };
             }
             case 'dingtalk': {
                 if (!config.webhook_url) return { success: false, error: '缺少 Webhook URL' };

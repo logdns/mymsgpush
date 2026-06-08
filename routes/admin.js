@@ -10,6 +10,7 @@ const { hashPassword, isHashedPassword, verifyPassword } = require('../security'
 
 const DEFAULT_WEBDAV_DIRECTORY = 'mymsgpush';
 const DEFAULT_WEBDAV_FILENAME_PREFIX = 'mymsgpush-backup';
+const VALID_CYCLE_TYPES = new Set(['once', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly']);
 
 const EXPORT_TABLES = {
     reminders: ['id', 'title', 'content', 'remind_time', 'cycle_type', 'status', 'link', 'created_at'],
@@ -43,6 +44,26 @@ function setSetting(key, value) {
     const existing = db.get('SELECT key FROM settings WHERE key = ?', [key]);
     if (existing) db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key]);
     else db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value]);
+}
+
+function positiveInt(value, fallback, max = 200) {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 1) return fallback;
+    return Math.min(Math.floor(number), max);
+}
+
+function normalizeReminderStatus(value) {
+    return Number(value) === 1 ? 1 : 0;
+}
+
+function isValidReminderInput({ title, content, remind_time, cycle_type }) {
+    return Boolean(
+        String(title || '').trim()
+        && String(content || '').trim()
+        && String(remind_time || '').trim()
+        && VALID_CYCLE_TYPES.has(cycle_type)
+        && !Number.isNaN(new Date(remind_time).getTime())
+    );
 }
 
 function createExportPayload(exportedAt = new Date()) {
@@ -259,7 +280,7 @@ async function ensureWebdavDirectory(config) {
             method: 'MKCOL',
             headers: webdavHeaders(config)
         });
-        if (![201, 405, 301, 302].includes(resp.status)) {
+        if (![200, 201, 207, 301, 302, 405].includes(resp.status)) {
             throw new Error(`创建 WebDAV 目录失败：HTTP ${resp.status}`);
         }
     }
@@ -393,6 +414,10 @@ function getLastWebdavBackupPath(config) {
     return isWebdavBackupFilename(filename, config) ? lastBackupPath : '';
 }
 
+function getLegacyWebdavBackupPath(config) {
+    return normalizeWebdavPath(config.directory, getWebdavLegacyBackupFilename(config));
+}
+
 async function resolveWebdavRestorePath(config, source = {}) {
     const requestedPath = resolveRequestedWebdavBackupPath(config, source);
     if (requestedPath) return requestedPath;
@@ -403,15 +428,12 @@ async function resolveWebdavRestorePath(config, source = {}) {
     } catch (error) {
         const lastBackupPath = getLastWebdavBackupPath(config);
         if (lastBackupPath) return lastBackupPath;
-        throw error;
+        return getLegacyWebdavBackupPath(config);
     }
 
     const lastBackupPath = getLastWebdavBackupPath(config);
     if (lastBackupPath) return lastBackupPath;
-
-    const error = new Error('未找到可恢复的 WebDAV 备份');
-    error.status = 400;
-    throw error;
+    return getLegacyWebdavBackupPath(config);
 }
 
 function runCommand(command, args, options = {}) {
@@ -588,7 +610,9 @@ router.get('/stats', adminAuth, (req, res) => {
 
 router.get('/reminders', adminAuth, (req, res) => {
     try {
-        const { page = 1, pageSize = 20, status, cycle_type, keyword } = req.query;
+        const { status, cycle_type, keyword } = req.query;
+        const page = positiveInt(req.query.page, 1, 100000);
+        const pageSize = positiveInt(req.query.pageSize, 20, 100);
         let sql = 'SELECT * FROM reminders WHERE 1=1';
         let countSql = 'SELECT COUNT(*) as count FROM reminders WHERE 1=1';
         const p = [], cp = [];
@@ -597,16 +621,19 @@ router.get('/reminders', adminAuth, (req, res) => {
         if (keyword) { sql += ' AND (title LIKE ? OR content LIKE ?)'; countSql += ' AND (title LIKE ? OR content LIKE ?)'; p.push(`%${keyword}%`, `%${keyword}%`); cp.push(`%${keyword}%`, `%${keyword}%`); }
         const total = db.get(countSql, cp).count;
         sql += ' ORDER BY remind_time DESC LIMIT ? OFFSET ?';
-        p.push(Number(pageSize), (Number(page) - 1) * Number(pageSize));
-        res.json({ reminders: db.all(sql, p), total, page: Number(page), pageSize: Number(pageSize) });
+        p.push(pageSize, (page - 1) * pageSize);
+        res.json({ reminders: db.all(sql, p), total, page, pageSize });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.put('/reminders/:id', adminAuth, (req, res) => {
     try {
         const { title, content, remind_time, cycle_type, status, link } = req.body;
+        if (!isValidReminderInput({ title, content, remind_time, cycle_type })) {
+            return res.status(400).json({ error: '提醒内容不完整或时间格式不正确' });
+        }
         db.run('UPDATE reminders SET title = ?, content = ?, remind_time = ?, cycle_type = ?, status = ?, link = ? WHERE id = ?',
-            [title, content, remind_time, cycle_type, status ?? 0, link || '', req.params.id]);
+            [String(title).trim(), String(content).trim(), remind_time, cycle_type, normalizeReminderStatus(status), String(link || '').trim(), req.params.id]);
         res.json({ success: true });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -629,7 +656,8 @@ router.post('/reminders/:id/test-notify', adminAuth, async (req, res) => {
 
 router.get('/logs', adminAuth, (req, res) => {
     try {
-        const { page = 1, pageSize = 50 } = req.query;
+        const page = positiveInt(req.query.page, 1, 100000);
+        const pageSize = positiveInt(req.query.pageSize, 50, 200);
         const { whereSql, params } = buildLogFilters(req.query);
         const total = db.get(
             `SELECT COUNT(*) as count FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql}`,
@@ -637,15 +665,17 @@ router.get('/logs', adminAuth, (req, res) => {
         ).count;
         const logs = db.all(
             `SELECT nl.*, r.title as reminder_title FROM notification_logs nl LEFT JOIN reminders r ON nl.reminder_id = r.id${whereSql} ORDER BY nl.created_at DESC LIMIT ? OFFSET ?`,
-            [...params, Number(pageSize), (Number(page) - 1) * Number(pageSize)]
+            [...params, pageSize, (page - 1) * pageSize]
         );
-        res.json({ logs, total, page: Number(page), pageSize: Number(pageSize) });
+        res.json({ logs, total, page, pageSize });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.delete('/logs/:id', adminAuth, (req, res) => {
     try {
-        db.run('DELETE FROM notification_logs WHERE id = ?', [Number(req.params.id)]);
+        const id = Number(req.params.id);
+        if (!Number.isFinite(id) || id < 1) return res.status(400).json({ error: '日志 ID 不正确' });
+        db.run('DELETE FROM notification_logs WHERE id = ?', [id]);
         res.json({ success: true, deleted: 1 });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -655,7 +685,7 @@ router.post('/logs/delete', adminAuth, (req, res) => {
         const { mode, ids = [], filters = {} } = req.body;
 
         if (mode === 'selected') {
-            const selectedIds = ids.map(Number).filter(Number.isFinite);
+            const selectedIds = ids.map(Number).filter(id => Number.isFinite(id) && id > 0);
             if (!selectedIds.length) return res.status(400).json({ error: '请选择要删除的日志' });
 
             const placeholders = selectedIds.map(() => '?').join(', ');

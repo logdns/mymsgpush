@@ -4,6 +4,8 @@ const db = require('../db');
 const { hasValidFrontendAuth } = require('./frontendAuth');
 const { verifyPassword } = require('../security');
 
+const VALID_CYCLE_TYPES = new Set(['once', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly']);
+
 function hasAdminAuth(req) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Basic ')) return false;
@@ -18,6 +20,20 @@ function hasAdminAuth(req) {
 function reminderAuth(req, res, next) {
     if (hasAdminAuth(req) || hasValidFrontendAuth(req)) return next();
     return res.status(401).json({ error: '未授权' });
+}
+
+function createReminderId() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function uniqueReminderId(preferredId = '') {
+    let id = String(preferredId || '').trim() || createReminderId();
+    while (db.get('SELECT id FROM reminders WHERE id = ?', [id])) id = createReminderId();
+    return id;
+}
+
+function normalizeStatus(value) {
+    return Number(value) === 1 ? 1 : 0;
 }
 
 router.use(reminderAuth);
@@ -37,12 +53,16 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
     try {
         const reminder = req.body;
-        if (!reminder.title || !reminder.content || !reminder.remind_time || !reminder.cycle_type) {
+        const title = String(reminder.title || '').trim();
+        const content = String(reminder.content || '').trim();
+        const remindTime = String(reminder.remind_time || '').trim();
+        const cycleType = String(reminder.cycle_type || '').trim();
+        if (!title || !content || !remindTime || !VALID_CYCLE_TYPES.has(cycleType) || Number.isNaN(new Date(remindTime).getTime())) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         db.run(
             'INSERT INTO reminders (id, title, content, remind_time, cycle_type, status, link) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [reminder.id || Date.now().toString(), reminder.title, reminder.content, reminder.remind_time, reminder.cycle_type, 0, reminder.link || '']
+            [uniqueReminderId(reminder.id), title, content, remindTime, cycleType, normalizeStatus(reminder.status), String(reminder.link || '').trim()]
         );
         res.json({ success: true });
     } catch (error) {
@@ -66,9 +86,12 @@ router.delete('/:id', (req, res) => {
 router.put('/:id', (req, res) => {
     try {
         const { title, content, remind_time, cycle_type, status, link } = req.body;
+        if (!title || !content || !remind_time || !VALID_CYCLE_TYPES.has(cycle_type) || Number.isNaN(new Date(remind_time).getTime())) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
         db.run(
             'UPDATE reminders SET title = ?, content = ?, remind_time = ?, cycle_type = ?, status = ?, link = ? WHERE id = ?',
-            [title, content, remind_time, cycle_type, status ?? 0, link || '', req.params.id]
+            [String(title).trim(), String(content).trim(), remind_time, cycle_type, normalizeStatus(status), String(link || '').trim(), req.params.id]
         );
         res.json({ success: true });
     } catch (error) {

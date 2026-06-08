@@ -288,6 +288,16 @@ textarea {
     margin-top: 20px;
 }
 
+.no-reminders {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #666;
+    background: #fff;
+    border: 1px dashed #d9d9d9;
+    border-radius: 16px;
+    padding: 40px 20px;
+}
+
 .card-container {
     position: relative;
 }

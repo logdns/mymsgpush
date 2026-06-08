@@ -187,13 +187,13 @@
         }
 
         function safeReminderLink(value) {
-            if (!value) return '#';
+            if (!value) return '';
             try {
                 const url = new URL(value, window.location.origin);
-                if (!['http:', 'https:'].includes(url.protocol)) return '#';
+                if (!['http:', 'https:'].includes(url.protocol)) return '';
                 return url.href;
             } catch {
-                return '#';
+                return '';
             }
         }
 
@@ -274,13 +274,12 @@
             const link = document.getElementById('link').value;
 
             const reminder = {
-                id: Date.now().toString(),
                 title,
                 content,
                 remind_time: new Date(remindTime).toISOString(),
                 cycle_type: cycleType,
                 status: 0,
-                link: link || 'https://xinai.de'
+                link: link.trim()
             };
 
             try {
@@ -317,6 +316,10 @@
                 listElement.innerHTML = '';
 
                 reminders.sort((a, b) => new Date(a.remind_time) - new Date(b.remind_time));
+                if (!reminders.length) {
+                    listElement.innerHTML = '<div class="no-reminders">暂无提醒，点击“添加新提醒”开始。</div>';
+                    return;
+                }
 
                 reminders.forEach(reminder => {
                     const safeCycleType = ['once', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly'].includes(reminder.cycle_type)
@@ -324,7 +327,8 @@
                         : 'once';
                     const safeTitle = escapeHTML(reminder.title);
                     const safeContent = escapeHTML(reminder.content);
-                    const safeLink = escapeAttr(safeReminderLink(reminder.link));
+                    const safeLink = safeReminderLink(reminder.link);
+                    const safeLinkAttr = escapeAttr(safeLink);
                     const safeId = jsString(reminder.id);
                     const cycleText = {
                         'once': '单次提醒',
@@ -410,13 +414,13 @@
                                 </p>
                             </div>
                             <div class="card-actions">
-                                <a href="${safeLink}" class="link-btn" target="_blank" rel="noopener noreferrer">
+                                ${safeLink?`<a href="${safeLinkAttr}" class="link-btn" target="_blank" rel="noopener noreferrer">
                                     <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
                                         <path d="M853.333333 469.333333a42.666667 42.666667 0 0 0-42.666666 42.666667v256a42.666667 42.666667 0 0 1-42.666667 42.666667H256a42.666667 42.666667 0 0 1-42.666667-42.666667V256a42.666667 42.666667 0 0 1 42.666667-42.666667h256a42.666667 42.666667 0 0 0 0-85.333333H256a128 128 0 0 0-128 128v512a128 128 0 0 0 128 128h512a128 128 0 0 0 128-128v-256a42.666667 42.666667 0 0 0-42.666667-42.666667z"/>
                                         <path d="M682.666667 213.333333h67.413333l-268.373333 267.946667a42.666667 42.666667 0 0 0 0 60.586667 42.666667 42.666667 0 0 0 60.586666 0L810.666667 273.92V341.333333a42.666667 42.666667 0 0 0 85.333333 0V170.666667a42.666667 42.666667 0 0 0-42.666667-42.666667h-170.666666a42.666667 42.666667 0 0 0 0 85.333333z"/>
                                     </svg>
                                     直达链接
-                                </a>
+                                </a>`:''}
                                 <button class="delete-btn" onclick="deleteReminder(${safeId})">
                                     <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
                                         <path d="M360 184h-8c4.4 0 8-3.6 8-8v8h304v-8c0 4.4 3.6 8 8 8h-8v72h72v-80c0-35.3-28.7-64-64-64H352c-35.3 0-64 28.7-64 64v80h72v-72z"/>
