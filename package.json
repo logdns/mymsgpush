@@ -1,6 +1,6 @@
 {
   "name": "mymsgpush",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "懒人备忘提醒推送系统 - 支持多渠道通知的提醒管理工具",
   "main": "server.js",
   "scripts": {
