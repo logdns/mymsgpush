@@ -112,11 +112,11 @@ pm2 start server.js --name mymsgpush
 
 进入后台 `设置 -> WebDAV 备份与恢复`：
 
-1. 填写 WebDAV 地址、用户名、密码、远端目录和备份文件名。
+1. 填写 WebDAV 地址、用户名、密码、远端目录和备份名前缀。
 2. 点击「保存 WebDAV 设置」。
 3. 点击「测试连接」确认可访问。
-4. 点击「备份到 WebDAV」会上传当前 JSON 备份。
-5. 点击「合并恢复」或「覆盖恢复」可从 WebDAV 读取备份并导入。
+4. 点击「备份到 WebDAV」会上传当前 JSON 备份，文件名会自动追加当时操作的时间戳，例如 `mymsgpush-backup-20260608-153012-123.json`。
+5. 在「恢复文件」里选择备份，或保留「最新备份」，再点击「合并恢复」或「覆盖恢复」导入。
 
 WebDAV 备份文件使用后台导出的同一 JSON 格式，包含提醒、通知渠道、通知日志、设置和管理员账户。
 
@@ -270,6 +270,7 @@ mymsgpush/
 | GET | `/admin/webdav` | 获取 WebDAV 设置 |
 | PUT | `/admin/webdav` | 保存 WebDAV 设置 |
 | POST | `/admin/webdav/test` | 测试 WebDAV 连接 |
+| GET | `/admin/webdav/backups` | 获取 WebDAV 备份文件列表 |
 | POST | `/admin/webdav/backup` | 备份数据到 WebDAV |
 | POST | `/admin/webdav/restore` | 从 WebDAV 恢复数据 |
 | GET | `/admin/logs` | 筛选通知日志 |

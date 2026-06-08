@@ -8,6 +8,9 @@ const db = require('../db');
 const { sendNotifications } = require('../notifier');
 const { hashPassword, isHashedPassword, verifyPassword } = require('../security');
 
+const DEFAULT_WEBDAV_DIRECTORY = 'mymsgpush';
+const DEFAULT_WEBDAV_FILENAME_PREFIX = 'mymsgpush-backup';
+
 const EXPORT_TABLES = {
     reminders: ['id', 'title', 'content', 'remind_time', 'cycle_type', 'status', 'link', 'created_at'],
     admin_users: ['id', 'username', 'password', 'created_at'],
@@ -42,10 +45,10 @@ function setSetting(key, value) {
     else db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, value]);
 }
 
-function createExportPayload() {
+function createExportPayload(exportedAt = new Date()) {
     const payload = {
         version: 1,
-        exported_at: new Date().toISOString(),
+        exported_at: exportedAt.toISOString(),
         app: 'mymsgpush',
         tables: {}
     };
@@ -169,16 +172,22 @@ function parseWebdavConfig(rawValue = null) {
             url: parsed.url || '',
             username: parsed.username || '',
             password: parsed.password || '',
-            directory: parsed.directory || 'mymsgpush',
-            filename: parsed.filename || 'mymsgpush-backup.json'
+            directory: String(parsed.directory || DEFAULT_WEBDAV_DIRECTORY).trim() || DEFAULT_WEBDAV_DIRECTORY,
+            filename: sanitizeWebdavFilenamePrefix(parsed.filename || parsed.filenamePrefix)
         };
     } catch {
-        return { enabled: false, url: '', username: '', password: '', directory: 'mymsgpush', filename: 'mymsgpush-backup.json' };
+        return { enabled: false, url: '', username: '', password: '', directory: DEFAULT_WEBDAV_DIRECTORY, filename: DEFAULT_WEBDAV_FILENAME_PREFIX };
     }
 }
 
 function maskWebdavConfig(config) {
-    return { ...config, password: config.password ? '********' : '' };
+    return {
+        ...config,
+        filenamePrefix: getWebdavFilenamePrefix(config),
+        legacyFilename: getWebdavLegacyBackupFilename(config),
+        lastBackupPath: getLastWebdavBackupPath(config),
+        password: config.password ? '********' : ''
+    };
 }
 
 function normalizeWebdavPath(...parts) {
@@ -188,6 +197,42 @@ function normalizeWebdavPath(...parts) {
         .replace(/\\/g, '/')
         .replace(/\/+/g, '/')
         .replace(/^\/|\/$/g, '');
+}
+
+function sanitizeWebdavFilenamePrefix(value) {
+    let prefix = String(value || DEFAULT_WEBDAV_FILENAME_PREFIX).trim();
+    prefix = prefix.replace(/\\/g, '/').split('/').pop().trim();
+    prefix = prefix.replace(/\.json$/i, '');
+    prefix = prefix.replace(/[/:*?"<>|#%]+/g, '-').replace(/\s+/g, '-');
+    return prefix || DEFAULT_WEBDAV_FILENAME_PREFIX;
+}
+
+function getWebdavFilenamePrefix(config) {
+    return sanitizeWebdavFilenamePrefix(config.filename || config.filenamePrefix);
+}
+
+function getWebdavLegacyBackupFilename(config) {
+    return `${getWebdavFilenamePrefix(config)}.json`;
+}
+
+function padNumber(value, size = 2) {
+    return String(value).padStart(size, '0');
+}
+
+function formatBackupTimestamp(date = new Date()) {
+    return [
+        date.getFullYear(),
+        padNumber(date.getMonth() + 1),
+        padNumber(date.getDate())
+    ].join('') + '-' + [
+        padNumber(date.getHours()),
+        padNumber(date.getMinutes()),
+        padNumber(date.getSeconds())
+    ].join('') + '-' + padNumber(date.getMilliseconds(), 3);
+}
+
+function buildWebdavBackupFilename(config, operatedAt = new Date()) {
+    return `${getWebdavFilenamePrefix(config)}-${formatBackupTimestamp(operatedAt)}.json`;
 }
 
 function buildWebdavUrl(config, relativePath = '') {
@@ -220,8 +265,153 @@ async function ensureWebdavDirectory(config) {
     }
 }
 
-function getWebdavBackupPath(config) {
-    return normalizeWebdavPath(config.directory, config.filename || 'mymsgpush-backup.json');
+function getWebdavBackupPath(config, filename = null) {
+    return normalizeWebdavPath(config.directory, filename || buildWebdavBackupFilename(config));
+}
+
+function decodeXmlEntities(value) {
+    return String(value || '')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+
+function readXmlTag(block, tag) {
+    const match = String(block || '').match(new RegExp(`<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?${tag}>`, 'i'));
+    return match ? decodeXmlEntities(match[1].trim()) : '';
+}
+
+function safeDecodeURIComponent(value) {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+}
+
+function filenameFromWebdavHref(href) {
+    const cleaned = String(href || '').split('?')[0].replace(/\\/g, '/').replace(/\/+$/g, '');
+    return safeDecodeURIComponent(cleaned.split('/').pop() || '');
+}
+
+function isWebdavBackupFilename(filename, config) {
+    const value = String(filename || '').toLowerCase();
+    if (!value.endsWith('.json')) return false;
+    const prefix = getWebdavFilenamePrefix(config).toLowerCase();
+    const legacy = getWebdavLegacyBackupFilename(config).toLowerCase();
+    return value === legacy || value.startsWith(`${prefix}-`);
+}
+
+function parseBackupTimeFromFilename(filename, config) {
+    const prefix = getWebdavFilenamePrefix(config).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = String(filename || '').match(new RegExp(`^${prefix}-(\\d{8})-(\\d{6})(?:-(\\d{3}))?\\.json$`, 'i'));
+    if (!match) return '';
+
+    const [, day, time, millisecond = '000'] = match;
+    const backupAt = new Date(
+        Number(day.slice(0, 4)),
+        Number(day.slice(4, 6)) - 1,
+        Number(day.slice(6, 8)),
+        Number(time.slice(0, 2)),
+        Number(time.slice(2, 4)),
+        Number(time.slice(4, 6)),
+        Number(millisecond)
+    );
+    return Number.isNaN(backupAt.getTime()) ? '' : backupAt.toISOString();
+}
+
+function dateMillis(value) {
+    const millis = Date.parse(value || '');
+    return Number.isFinite(millis) ? millis : 0;
+}
+
+function parseWebdavBackupList(xml, config) {
+    const blocks = String(xml || '').match(/<(?:[\w.-]+:)?response\b[^>]*>[\s\S]*?<\/(?:[\w.-]+:)?response>/gi) || [];
+    const backups = [];
+
+    for (const block of blocks) {
+        if (/<(?:[\w.-]+:)?collection\b/i.test(block)) continue;
+        const filename = filenameFromWebdavHref(readXmlTag(block, 'href'));
+        if (!isWebdavBackupFilename(filename, config)) continue;
+
+        const lastModifiedText = readXmlTag(block, 'getlastmodified');
+        const lastModified = lastModifiedText && !Number.isNaN(new Date(lastModifiedText).getTime())
+            ? new Date(lastModifiedText).toISOString()
+            : '';
+        const size = Number(readXmlTag(block, 'getcontentlength')) || 0;
+        backups.push({
+            filename,
+            remotePath: normalizeWebdavPath(config.directory, filename),
+            backupAt: parseBackupTimeFromFilename(filename, config),
+            lastModified,
+            size
+        });
+    }
+
+    return backups.sort((a, b) => {
+        const byTime = dateMillis(b.backupAt || b.lastModified) - dateMillis(a.backupAt || a.lastModified);
+        return byTime || b.filename.localeCompare(a.filename);
+    });
+}
+
+async function listWebdavBackups(config) {
+    const resp = await fetch(buildWebdavUrl(config, normalizeWebdavPath(config.directory)), {
+        method: 'PROPFIND',
+        headers: webdavHeaders(config, { Depth: '1' })
+    });
+    if (![200, 207].includes(resp.status)) {
+        const error = new Error(`读取 WebDAV 备份列表失败：HTTP ${resp.status}`);
+        error.status = 400;
+        throw error;
+    }
+    return parseWebdavBackupList(await resp.text(), config);
+}
+
+function resolveRequestedWebdavBackupPath(config, source = {}) {
+    const rawPath = String(source.remotePath || source.filename || '').trim();
+    if (!rawPath) return '';
+
+    const filename = filenameFromWebdavHref(rawPath);
+    if (!isWebdavBackupFilename(filename, config)) {
+        const error = new Error('请选择有效的 WebDAV 备份文件');
+        error.status = 400;
+        throw error;
+    }
+    return normalizeWebdavPath(config.directory, filename);
+}
+
+function getLastWebdavBackupPath(config) {
+    const lastBackupPath = normalizeWebdavPath(getSetting('webdav_last_backup_path', ''));
+    if (!lastBackupPath) return '';
+
+    const directory = normalizeWebdavPath(config.directory);
+    if (directory && !lastBackupPath.startsWith(`${directory}/`)) return '';
+
+    const filename = filenameFromWebdavHref(lastBackupPath);
+    return isWebdavBackupFilename(filename, config) ? lastBackupPath : '';
+}
+
+async function resolveWebdavRestorePath(config, source = {}) {
+    const requestedPath = resolveRequestedWebdavBackupPath(config, source);
+    if (requestedPath) return requestedPath;
+
+    try {
+        const backups = await listWebdavBackups(config);
+        if (backups.length) return backups[0].remotePath;
+    } catch (error) {
+        const lastBackupPath = getLastWebdavBackupPath(config);
+        if (lastBackupPath) return lastBackupPath;
+        throw error;
+    }
+
+    const lastBackupPath = getLastWebdavBackupPath(config);
+    if (lastBackupPath) return lastBackupPath;
+
+    const error = new Error('未找到可恢复的 WebDAV 备份');
+    error.status = 400;
+    throw error;
 }
 
 function runCommand(command, args, options = {}) {
@@ -528,8 +718,8 @@ router.put('/webdav', adminAuth, (req, res) => {
             url: String(incoming.url || '').trim(),
             username: String(incoming.username || '').trim(),
             password: incoming.password === '********' || incoming.password === undefined ? oldConfig.password : String(incoming.password || ''),
-            directory: String(incoming.directory || 'mymsgpush').trim() || 'mymsgpush',
-            filename: String(incoming.filename || 'mymsgpush-backup.json').trim() || 'mymsgpush-backup.json'
+            directory: String(incoming.directory || DEFAULT_WEBDAV_DIRECTORY).trim() || DEFAULT_WEBDAV_DIRECTORY,
+            filename: sanitizeWebdavFilenamePrefix(incoming.filename || incoming.filenamePrefix)
         };
 
         if (config.enabled && !config.url) return res.status(400).json({ error: '请填写 WebDAV 地址' });
@@ -553,16 +743,28 @@ router.post('/webdav/test', adminAuth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+router.get('/webdav/backups', adminAuth, async (req, res) => {
+    try {
+        const config = parseWebdavConfig();
+        if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
+
+        const backups = await listWebdavBackups(config);
+        res.json({ success: true, backups, lastBackupPath: getLastWebdavBackupPath(config) });
+    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
+
 router.post('/webdav/backup', adminAuth, async (req, res) => {
     try {
         const config = parseWebdavConfig();
         if (!config.enabled) return res.status(400).json({ error: '请先启用 WebDAV 备份' });
         if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
 
+        const operatedAt = new Date();
         await ensureWebdavDirectory(config);
-        const payload = createExportPayload();
+        const payload = createExportPayload(operatedAt);
         const body = JSON.stringify(payload, null, 2);
-        const remotePath = getWebdavBackupPath(config);
+        const filename = buildWebdavBackupFilename(config, operatedAt);
+        const remotePath = getWebdavBackupPath(config, filename);
         const resp = await fetch(buildWebdavUrl(config, remotePath), {
             method: 'PUT',
             headers: webdavHeaders(config, { 'Content-Type': 'application/json; charset=utf-8' }),
@@ -570,18 +772,20 @@ router.post('/webdav/backup', adminAuth, async (req, res) => {
         });
 
         if (![200, 201, 204].includes(resp.status)) return res.status(400).json({ error: `WebDAV 备份失败：HTTP ${resp.status}` });
-        setSetting('webdav_last_backup_at', new Date().toISOString());
-        res.json({ success: true, remotePath, bytes: Buffer.byteLength(body) });
+        setSetting('webdav_last_backup_at', operatedAt.toISOString());
+        setSetting('webdav_last_backup_path', remotePath);
+        res.json({ success: true, filename, remotePath, operatedAt: operatedAt.toISOString(), bytes: Buffer.byteLength(body) });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.post('/webdav/restore', adminAuth, async (req, res) => {
     try {
-        const { mode = 'merge' } = req.body || {};
+        const { mode = 'merge', filename = '', remotePath: requestedRemotePath = '' } = req.body || {};
         const config = parseWebdavConfig();
         if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
 
-        const remotePath = getWebdavBackupPath(config);
+        const operatedAt = new Date();
+        const remotePath = await resolveWebdavRestorePath(config, { filename, remotePath: requestedRemotePath });
         const resp = await fetch(buildWebdavUrl(config, remotePath), {
             method: 'GET',
             headers: webdavHeaders(config)
@@ -590,8 +794,9 @@ router.post('/webdav/restore', adminAuth, async (req, res) => {
 
         const data = await resp.json();
         const imported = importBackupPayload(data, mode, { username: req.adminUser.username, password: req.adminPassword });
-        setSetting('webdav_last_restore_at', new Date().toISOString());
-        res.json({ success: true, mode, remotePath, imported });
+        setSetting('webdav_last_restore_at', operatedAt.toISOString());
+        setSetting('webdav_last_restore_path', remotePath);
+        res.json({ success: true, mode, remotePath, operatedAt: operatedAt.toISOString(), imported });
     } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 

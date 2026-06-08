@@ -425,7 +425,7 @@
                 </div>
                 <div class="settings-card settings-webdav-card">
                     <div class="section-title">WebDAV 备份与恢复</div>
-                    <p>保存 WebDAV 设置后，可以把当前数据备份为 JSON，也可以从远端备份合并或覆盖恢复。</p>
+                    <p>保存 WebDAV 设置后，可以把当前数据备份为带操作时间戳的 JSON，也可以从远端备份合并或覆盖恢复。</p>
                     <div class="form-row">
                         <div class="form-group"><label>WebDAV 地址</label><input type="url" id="webdavUrl" placeholder="https://example.com/dav"></div>
                         <div class="form-group"><label>用户名</label><input type="text" id="webdavUsername" placeholder="WebDAV 用户名"></div>
@@ -435,8 +435,11 @@
                         <div class="form-group"><label>远端目录</label><input type="text" id="webdavDirectory" placeholder="mymsgpush"></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>备份文件名</label><input type="text" id="webdavFilename" placeholder="mymsgpush-backup.json"></div>
+                        <div class="form-group"><label>备份名前缀</label><input type="text" id="webdavFilename" placeholder="mymsgpush-backup"></div>
                         <div class="form-group"><label>启用备份</label><select id="webdavEnabled"><option value="1">启用</option><option value="0">停用</option></select></div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="form-group"><label>恢复文件</label><select id="webdavRestoreFile"><option value="">最新备份</option></select></div>
                     </div>
                     <div class="btn-row">
                         <button class="form-btn primary" onclick="saveWebdavConfig()">保存 WebDAV 设置</button>
@@ -852,8 +855,10 @@ async function loadWebdavConfig(){
         document.getElementById('webdavUsername').value=d.username||'';
         document.getElementById('webdavPassword').value=d.password||'';
         document.getElementById('webdavDirectory').value=d.directory||'mymsgpush';
-        document.getElementById('webdavFilename').value=d.filename||'mymsgpush-backup.json';
+        document.getElementById('webdavFilename').value=d.filenamePrefix||d.filename||'mymsgpush-backup';
         document.getElementById('webdavStatus').textContent=d.url?'WebDAV 设置已加载。':'尚未配置 WebDAV。';
+        if(d.url)loadWebdavBackups();
+        else renderWebdavBackups([]);
     }catch(e){document.getElementById('webdavStatus').textContent='WebDAV 设置加载失败。';}
 }
 
@@ -864,11 +869,63 @@ function getWebdavForm(){
         username:document.getElementById('webdavUsername').value.trim(),
         password:document.getElementById('webdavPassword').value,
         directory:document.getElementById('webdavDirectory').value.trim()||'mymsgpush',
-        filename:document.getElementById('webdavFilename').value.trim()||'mymsgpush-backup.json'
+        filename:document.getElementById('webdavFilename').value.trim()||'mymsgpush-backup'
     };
 }
 
-async function saveWebdavConfig(){
+function formatWebdavTime(value){
+    if(!value)return '';
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?'':date.toLocaleString('zh-CN');
+}
+
+function formatWebdavBytes(value){
+    const bytes=Number(value)||0;
+    if(bytes>=1024*1024)return `${(bytes/1024/1024).toFixed(1)} MB`;
+    if(bytes>=1024)return `${(bytes/1024).toFixed(1)} KB`;
+    return `${bytes} B`;
+}
+
+function renderWebdavBackups(backups,lastBackupPath=''){
+    const select=document.getElementById('webdavRestoreFile');
+    const current=select.value;
+    select.innerHTML='<option value="">最新备份</option>';
+    (backups||[]).forEach(item=>{
+        const option=document.createElement('option');
+        option.value=item.remotePath;
+        const time=formatWebdavTime(item.backupAt||item.lastModified);
+        option.textContent=`${item.filename}${time?` - ${time}`:''} (${formatWebdavBytes(item.size)})`;
+        select.appendChild(option);
+    });
+    if(current&&Array.from(select.options).some(option=>option.value===current))select.value=current;
+    else if(lastBackupPath&&Array.from(select.options).some(option=>option.value===lastBackupPath))select.value=lastBackupPath;
+}
+
+async function loadWebdavBackups(){
+    const select=document.getElementById('webdavRestoreFile');
+    if(!document.getElementById('webdavUrl').value.trim()){
+        renderWebdavBackups([]);
+        return;
+    }
+    select.disabled=true;
+    try{
+        const r=await fetch('/admin/webdav/backups',{headers:H()});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok){
+            renderWebdavBackups(d.backups||[],d.lastBackupPath||'');
+        }else{
+            renderWebdavBackups([]);
+            document.getElementById('webdavStatus').textContent=d.error||'WebDAV 备份列表加载失败。';
+        }
+    }catch(e){
+        renderWebdavBackups([]);
+        document.getElementById('webdavStatus').textContent='WebDAV 备份列表加载失败。';
+    }finally{
+        select.disabled=false;
+    }
+}
+
+async function saveWebdavConfig(refreshBackups=true){
     try{
         const r=await fetch('/admin/webdav',{method:'PUT',headers:H(),body:JSON.stringify(getWebdavForm())});
         const d=await r.json().catch(()=>({}));
@@ -876,6 +933,8 @@ async function saveWebdavConfig(){
             toast('WebDAV 设置已保存');
             document.getElementById('webdavPassword').value=d.config&&d.config.password?d.config.password:'';
             document.getElementById('webdavStatus').textContent='WebDAV 设置已保存。';
+            if(d.config&&d.config.filenamePrefix)document.getElementById('webdavFilename').value=d.config.filenamePrefix;
+            if(refreshBackups)loadWebdavBackups();
             return true;
         }
         const message=r.status===404?'WebDAV 后端接口不可用，请重启 Node/PM2 进程后再试。':(d.error||'保存失败');
@@ -891,29 +950,30 @@ async function saveWebdavConfig(){
 }
 
 async function testWebdav(){
-    if(!(await saveWebdavConfig()))return;
+    if(!(await saveWebdavConfig(false)))return;
     const r=await fetch('/admin/webdav/test',{method:'POST',headers:H()});
     const d=await r.json().catch(()=>({}));
-    if(r.ok){toast('WebDAV 连接正常');document.getElementById('webdavStatus').textContent=d.message||'WebDAV 连接正常。';}
+    if(r.ok){toast('WebDAV 连接正常');document.getElementById('webdavStatus').textContent=d.message||'WebDAV 连接正常。';loadWebdavBackups();}
     else{toast(d.error||'WebDAV 测试失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 测试失败。';}
 }
 
 async function backupToWebdav(){
-    if(!(await saveWebdavConfig()))return;
+    if(!(await saveWebdavConfig(false)))return;
     const r=await fetch('/admin/webdav/backup',{method:'POST',headers:H()});
     const d=await r.json().catch(()=>({}));
-    if(r.ok){toast('已备份到 WebDAV');document.getElementById('webdavStatus').textContent=`备份完成：${d.remotePath}，${d.bytes||0} bytes。`;}
+    if(r.ok){toast('已备份到 WebDAV');document.getElementById('webdavStatus').textContent=`备份完成：${d.remotePath}，${d.bytes||0} bytes。`;loadWebdavBackups();}
     else{toast(d.error||'WebDAV 备份失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 备份失败。';}
 }
 
 async function restoreFromWebdav(mode){
     if(mode==='replace'&&!confirm('覆盖恢复会替换备份文件中包含的数据表，确定继续？'))return;
-    const r=await fetch('/admin/webdav/restore',{method:'POST',headers:H(),body:JSON.stringify({mode})});
+    const remotePath=document.getElementById('webdavRestoreFile').value;
+    const r=await fetch('/admin/webdav/restore',{method:'POST',headers:H(),body:JSON.stringify({mode,remotePath})});
     const d=await r.json().catch(()=>({}));
     if(r.ok){
         const imported=d.imported||{};
         toast('WebDAV 恢复完成');
-        document.getElementById('webdavStatus').textContent=`恢复完成：提醒 ${imported.reminders||0} 条，渠道 ${imported.notify_channels||0} 条，日志 ${imported.notification_logs||0} 条。`;
+        document.getElementById('webdavStatus').textContent=`恢复完成：${d.remotePath||'最新备份'}，提醒 ${imported.reminders||0} 条，渠道 ${imported.notify_channels||0} 条，日志 ${imported.notification_logs||0} 条。`;
         loadReminders();loadStats();loadChannels();loadLogs();loadFrontendPwd();loadSecurity();loadWebdavConfig();
     }else{toast(d.error||'WebDAV 恢复失败','error');document.getElementById('webdavStatus').textContent=d.error||'WebDAV 恢复失败。';}
 }
