@@ -748,6 +748,7 @@ router.get('/webdav/backups', adminAuth, async (req, res) => {
         const config = parseWebdavConfig();
         if (!config.url) return res.status(400).json({ error: '请先保存 WebDAV 地址' });
 
+        await ensureWebdavDirectory(config);
         const backups = await listWebdavBackups(config);
         res.json({ success: true, backups, lastBackupPath: getLastWebdavBackupPath(config) });
     } catch (error) { res.status(error.status || 500).json({ error: error.message }); }

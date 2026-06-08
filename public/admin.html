@@ -913,9 +913,10 @@ async function loadWebdavBackups(){
         const d=await r.json().catch(()=>({}));
         if(r.ok){
             renderWebdavBackups(d.backups||[],d.lastBackupPath||'');
+            document.getElementById('webdavStatus').textContent=(d.backups||[]).length?'WebDAV 备份列表已加载。':'暂无远端备份，可先点击「备份到 WebDAV」。';
         }else{
             renderWebdavBackups([]);
-            document.getElementById('webdavStatus').textContent=d.error||'WebDAV 备份列表加载失败。';
+            document.getElementById('webdavStatus').textContent=r.status===404?'WebDAV 备份列表接口不可用，请重启 Node/PM2 进程后再试。':(d.error||'WebDAV 备份列表加载失败。');
         }
     }catch(e){
         renderWebdavBackups([]);
